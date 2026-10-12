@@ -6,6 +6,8 @@ interface FaceBackgroundProps {
   isCompleted: boolean;
   level: 1 | 2;
   hasEyesPlaced?: boolean;
+  hasEyeLeftPlaced?: boolean;
+  hasEyeRightPlaced?: boolean;
   hasNosePlaced?: boolean;
   hasMouthPlaced?: boolean;
   hasEarLeftPlaced?: boolean;
@@ -21,6 +23,8 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
   isCompleted,
   level,
   hasEyesPlaced = false,
+  hasEyeLeftPlaced = false,
+  hasEyeRightPlaced = false,
   hasNosePlaced = false,
   hasMouthPlaced = false,
   hasEarLeftPlaced = false,
@@ -151,7 +155,7 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
 
       {/* EYEBROWS (Always visible, cute, high above eyes) */}
       <g id="eyebrows" opacity="0.85">
-        {/* Left Eyebrow */}
+        {/* Left Eyebrow (Viewer's left - baby's right) */}
         <path
           d="M 155 178 Q 185 165 210 174"
           stroke="#8A5A36"
@@ -159,7 +163,7 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
           strokeLinecap="round"
           fill="none"
         />
-        {/* Right Eyebrow */}
+        {/* Right Eyebrow (Viewer's right - baby's left) */}
         <path
           d="M 290 174 Q 315 165 345 178"
           stroke="#8A5A36"
@@ -177,8 +181,8 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
       {/* Extra joyful glowing blushing cheeks when completed */}
       {isCompleted && (
         <g id="happy-blush" className="animate-pulse">
-          <ellipse cx="145" cy="305" rx="36" ry="22" fill="#FF6B8B" opacity="0.55" />
-          <ellipse cx="355" cy="305" rx="36" ry="22" fill="#FF6B8B" opacity="0.55" />
+          <ellipse cx="145" cy="305" rx="36" ry="22" fill="#FF6B8B" opacity="0.65" />
+          <ellipse cx="355" cy="305" rx="36" ry="22" fill="#FF6B8B" opacity="0.65" />
           {/* Cute sparkle hearts on cheeks */}
           <path
             d="M 135 298 C 135 294, 140 292, 143 295 C 146 292, 151 294, 151 298 C 151 303, 143 308, 143 308 C 143 308, 135 303, 135 298 Z"
@@ -200,7 +204,6 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
           // Level 1: Pair of eyes guide
           !hasEyesPlaced && (
             <g opacity="0.32">
-              {/* Outer guide dashed container */}
               <rect
                 x="132"
                 y="196"
@@ -212,10 +215,8 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
                 strokeWidth="2.5"
                 strokeDasharray="6 6"
               />
-              {/* Left eye ghost silhouette */}
               <circle cx="185" cy="230" r="24" fill="#9CA3AF" opacity="0.4" />
               <circle cx="180" cy="225" r="7" fill="#FFFFFF" opacity="0.6" />
-              {/* Right eye ghost silhouette */}
               <circle cx="315" cy="230" r="24" fill="#9CA3AF" opacity="0.4" />
               <circle cx="310" cy="225" r="7" fill="#FFFFFF" opacity="0.6" />
             </g>
@@ -223,19 +224,36 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
         ) : (
           // Level 2: Left and right separate eye guides
           <>
-            {!hasEyesPlaced && (
-              <g opacity="0.28">
-                {/* Left eye slot */}
+            {/* Mắt phải (nằm bên trái màn hình cx: 180) */}
+            {!hasEyeRightPlaced && (
+              <g opacity="0.32">
                 <circle
-                  cx="180"
-                  cy="230"
-                  r="28"
+                  cx="178"
+                  cy="225"
+                  r="30"
                   fill="#FEE2E2"
                   stroke="#F87171"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
+                  strokeWidth="2.5"
+                  strokeDasharray="5 5"
                 />
-                <circle cx="180" cy="230" r="20" fill="#9CA3AF" opacity="0.4" />
+                <circle cx="178" cy="225" r="20" fill="#9CA3AF" opacity="0.35" />
+                <circle cx="173" cy="220" r="6" fill="#FFFFFF" opacity="0.6" />
+              </g>
+            )}
+            {/* Mắt trái (nằm bên phải màn hình cx: 322) */}
+            {!hasEyeLeftPlaced && (
+              <g opacity="0.32">
+                <circle
+                  cx="322"
+                  cy="225"
+                  r="30"
+                  fill="#FEE2E2"
+                  stroke="#F87171"
+                  strokeWidth="2.5"
+                  strokeDasharray="5 5"
+                />
+                <circle cx="322" cy="225" r="20" fill="#9CA3AF" opacity="0.35" />
+                <circle cx="317" cy="220" r="6" fill="#FFFFFF" opacity="0.6" />
               </g>
             )}
           </>
@@ -265,8 +283,8 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
           </g>
         )}
 
-        {/* LEFT EAR GUIDE */}
-        {!hasEarLeftPlaced && (
+        {/* TAI PHẢI GUIDE (Bên trái màn hình: x: 102) */}
+        {!hasEarRightPlaced && (
           <g opacity="0.35">
             <path
               d="M 102 235 C 65 235, 60 310, 105 315 Z"
@@ -275,7 +293,6 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
               strokeWidth="2.5"
               strokeDasharray="5 5"
             />
-            {/* Inner ear curve hint */}
             <path
               d="M 98 255 C 80 255, 78 295, 100 300"
               stroke="#EA580C"
@@ -286,8 +303,8 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
           </g>
         )}
 
-        {/* RIGHT EAR GUIDE */}
-        {!hasEarRightPlaced && (
+        {/* TAI TRÁI GUIDE (Bên phải màn hình: x: 398) */}
+        {!hasEarLeftPlaced && (
           <g opacity="0.35">
             <path
               d="M 398 235 C 435 235, 440 310, 395 315 Z"
@@ -296,7 +313,6 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
               strokeWidth="2.5"
               strokeDasharray="5 5"
             />
-            {/* Inner ear curve hint */}
             <path
               d="M 402 255 C 420 255, 422 295, 400 300"
               stroke="#EA580C"
@@ -337,26 +353,22 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
       {character === 'boy' ? (
         // Boy Cute Haircut
         <g id="boy-hair">
-          {/* Top Hair Volume */}
           <path
             d="M 120 215 C 110 150, 160 80, 250 80 C 340 80, 390 150, 380 215 C 365 170, 345 155, 320 158 C 295 160, 280 145, 255 145 C 230 145, 215 160, 185 158 C 155 155, 135 170, 120 215 Z"
             fill="url(#boyHairGrad)"
             stroke="#301F0E"
             strokeWidth="3"
           />
-          {/* Playful Spiky Tuft on Top */}
           <path
             d="M 240 82 C 235 55, 255 45, 260 48 C 265 52, 270 65, 262 82 Z"
             fill="url(#boyHairGrad)"
             stroke="#301F0E"
             strokeWidth="2.5"
           />
-          {/* Soft Bangs */}
           <path
             d="M 145 170 C 170 190, 190 170, 210 180 C 235 170, 260 175, 285 165 C 310 175, 335 168, 355 170 C 340 145, 310 135, 250 135 C 190 135, 160 145, 145 170 Z"
             fill="#5A3A1E"
           />
-          {/* Glossy Hair highlight */}
           <path
             d="M 190 115 C 215 105, 285 105, 310 115"
             stroke="#A37145"
@@ -369,14 +381,12 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
       ) : (
         // Girl Cute Hair & Big Pink Ribbon Bows
         <g id="girl-hair">
-          {/* Front bangs and side curls */}
           <path
             d="M 120 230 C 110 150, 160 80, 250 80 C 340 80, 390 150, 380 230 C 365 180, 350 165, 330 172 C 305 155, 275 165, 250 155 C 225 165, 195 155, 170 172 C 150 165, 135 180, 120 230 Z"
             fill="url(#girlHairGrad)"
             stroke="#391B0B"
             strokeWidth="3"
           />
-          {/* Cute rounded bangs */}
           <path
             d="M 160 165 Q 200 195 240 168 Q 280 195 320 168 C 300 145, 280 135, 240 135 C 200 135, 180 145, 160 165 Z"
             fill="#6A361C"
@@ -396,7 +406,6 @@ export const BabyFaceBase: React.FC<FaceBackgroundProps> = ({
             <circle cx="0" cy="0" r="8" fill="#FFF1F2" stroke="#BE185D" strokeWidth="2" />
           </g>
 
-          {/* Hair shine */}
           <path
             d="M 195 110 C 220 100, 280 100, 305 110"
             stroke="#A35932"

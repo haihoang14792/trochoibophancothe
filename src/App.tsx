@@ -32,6 +32,8 @@ export default function App() {
     setIsGameStarted(true);
     setStartTime(Date.now());
     soundEngine.playTouchPop();
+    // Play intro voice: "Các bé ơi! Chúng mình cùng ghép khuôn mặt nhé!"
+    soundEngine.playIntro();
   };
 
   // Toggle character (Boy <-> Girl)
@@ -80,8 +82,8 @@ export default function App() {
       console.warn('Save game session to Firebase warning:', err);
     });
 
-    // Play joyful celebration fanfare melody
-    soundEngine.playVictoryMusic();
+    // Play celebration fanfare and then "Hoan hô! Con giỏi lắm!"
+    soundEngine.playCongrats();
   }, [startTime, level, character, saveGameSession]);
 
   return (

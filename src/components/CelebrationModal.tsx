@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { RotateCcw, Sparkles, Heart } from 'lucide-react';
+import { RotateCcw, Sparkles, Heart, Volume2 } from 'lucide-react';
+import { soundEngine } from '../utils/audio';
 
 interface CelebrationModalProps {
   isOpen: boolean;
@@ -11,12 +12,11 @@ interface CelebrationModalProps {
 export const CelebrationModal: React.FC<CelebrationModalProps> = ({
   isOpen,
   onPlayAgain,
-  characterName,
 }) => {
   useEffect(() => {
     if (isOpen) {
       // Fire festive colorful confetti with toddler-friendly vibrant pastels & stars!
-      const count = 200;
+      const count = 220;
       const defaults = {
         origin: { y: 0.6 },
         colors: ['#FF6B8B', '#FFD166', '#06D6A0', '#118AB2', '#F78C6B', '#A78BFA'],
@@ -30,28 +30,11 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
         });
       };
 
-      fire(0.25, {
-        spread: 26,
-        startVelocity: 55,
-      });
-      fire(0.2, {
-        spread: 60,
-      });
-      fire(0.35, {
-        spread: 100,
-        decay: 0.91,
-        scalar: 1.2,
-      });
-      fire(0.1, {
-        spread: 120,
-        startVelocity: 25,
-        decay: 0.92,
-        scalar: 1.4,
-      });
-      fire(0.1, {
-        spread: 120,
-        startVelocity: 45,
-      });
+      fire(0.25, { spread: 26, startVelocity: 55 });
+      fire(0.2, { spread: 60 });
+      fire(0.35, { spread: 100, decay: 0.91, scalar: 1.2 });
+      fire(0.1, { spread: 120, startVelocity: 25, decay: 0.92, scalar: 1.4 });
+      fire(0.1, { spread: 120, startVelocity: 45 });
     }
   }, [isOpen]);
 
@@ -69,18 +52,29 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
         </div>
 
         {/* Big Joyful Title */}
-        <h2 className="text-3xl sm:text-4xl font-extrabold text-amber-600 mb-2 tracking-tight">
+        <h2 className="text-3xl sm:text-4xl font-extrabold text-amber-600 mb-1.5 tracking-tight">
           Hoan Hô! 🎉
         </h2>
 
         {/* Congratulatory subtitle */}
-        <p className="text-2xl sm:text-3xl font-bold text-rose-500 mb-2">
+        <p className="text-2xl sm:text-3xl font-black text-rose-500 mb-2">
           Con Giỏi Lắm! ⭐
         </p>
 
-        <p className="text-slate-600 text-base sm:text-lg mb-6">
+        <p className="text-slate-600 text-sm sm:text-base mb-4 font-semibold">
           Bé đã ghép hoàn thành khuôn mặt thật xinh xắn!
         </p>
+
+        {/* Voice replay button */}
+        <div className="mb-6">
+          <button
+            onClick={() => soundEngine.queueVoice('congrats')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-full text-xs font-bold border border-rose-200 transition-all cursor-pointer active:scale-95"
+          >
+            <Volume2 className="w-3.5 h-3.5 text-rose-600" />
+            <span>Nghe lại lời khen: “Hoan hô! Con giỏi lắm!”</span>
+          </button>
+        </div>
 
         {/* Big Play Again Button (Nút lớn CHƠI LẠI) */}
         <button

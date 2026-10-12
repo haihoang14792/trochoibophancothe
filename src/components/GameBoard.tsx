@@ -97,9 +97,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     const allLocked = requiredPartIds.every((id) => lockedParts[id]);
 
     if (allLocked && !isGameCompleted && requiredPartIds.length > 0) {
+      // Allow the last part's voice to begin speaking before triggering celebration
       const timer = setTimeout(() => {
         onGameComplete();
-      }, 350);
+      }, 700);
       return () => clearTimeout(timer);
     }
   }, [lockedParts, parts, isGameCompleted, onGameComplete]);
@@ -151,11 +152,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     [dragState]
   );
 
-  // Pointer up handler: evaluates hit test
+  // Pointer up handler: evaluates hit test with child-friendly tolerance
   const handlePointerUp = useCallback(
     (e: PointerEvent) => {
       if (!dragState) return;
-      const { partId, currentPointerX, currentPointerY, originRect } = dragState;
+      const { partId, currentPointerX, currentPointerY } = dragState;
       setDragState(null);
 
       const faceEl = faceContainerRef.current;
@@ -172,107 +173,162 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       if (!correctSlot) return;
 
       const distToCorrect = Math.hypot(relX - correctSlot.x, relY - correctSlot.y);
-      const snapRadius = level === 1 ? correctSlot.radius * 1.25 : correctSlot.radius * 1.2;
+      const activePartDef = parts.find((p) => p.id === partId);
+      if (!activePartDef) return;
 
       let isSnapSuccess = false;
       let wrongSlotHit: SlotArea | null = null;
 
-      if (partId === 'ears') {
-        // ========== LEVEL 1: CẶP TAI ==========
-        // A pair of ears goes on the sides of the baby's head.
-        // Toddlers can drop it anywhere across the baby head or sides to snap!
-        const isNearLeftEar = Math.hypot(relX - 14.5, relY - 53.5) <= 32;
-        const isNearRightEar = Math.hypot(relX - 85.5, relY - 53.5) <= 32;
-        const isNearCenter = Math.hypot(relX - 50, relY - 53.5) <= 38;
-        const isAcrossHead = relY >= 30 && relY <= 72 && relX >= 0 && relX <= 100;
+      if (level === 1) {
+        // ================= LEVEL 1: MỨC DỄ (4 BỘ PHẬN) =================
+        if (partId === 'ears') {
+          // Cặp tai: Đặt bất cứ vị trí nào ngang tầm tai/đầu
+          const isNearSides = (relX <= 35 || relX >= 65) && relY >= 28 && relY <= 78;
+          const isNearCenter = Math.hypot(relX - 50, relY - 53.5) <= 38;
+          const isAcrossHead = relY >= 30 && relY <= 72 && relX >= 5 && relX <= 95;
 
-        // Check if dropped explicitly down on mouth (y >= 75) or high up on hair (y <= 24)
-        const isExplicitlyOnMouth = relY >= 75 && Math.abs(relX - 50) <= 20;
-        const isExplicitlyOnHair = relY <= 24 && Math.abs(relX - 50) <= 25;
+          const isExplicitlyOnMouth = relY >= 78 && Math.abs(relX - 50) <= 18;
+          const isExplicitlyOnEyes = relY <= 38 && Math.abs(relX - 50) <= 20;
 
-        if (isExplicitlyOnMouth) {
-          isSnapSuccess = false;
-          wrongSlotHit = slots.find((s) => s.id === 'mouth') || null;
-        } else if (isExplicitlyOnHair) {
-          isSnapSuccess = false;
-          wrongSlotHit = slots.find((s) => s.id === 'eyes') || null;
-        } else if (isNearLeftEar || isNearRightEar || isNearCenter || isAcrossHead) {
-          isSnapSuccess = true;
-        }
-      } else if (partId === 'ear_left') {
-        // ========== LEVEL 2: TAI TRÁI ==========
-        // Left ear belongs on the left side of the baby head (x: 14.5, y: 53.5)
-        const isNearTarget = distToCorrect <= snapRadius * 1.35;
-        const isOnLeftSide = relX <= 32 && relY >= 32 && relY <= 75;
-
-        if (isNearTarget || isOnLeftSide) {
-          isSnapSuccess = true;
-        } else if (relX >= 68 && relY >= 32 && relY <= 75) {
-          // Dropped on opposite ear
-          isSnapSuccess = false;
-          wrongSlotHit = slots.find((s) => s.id === 'ear_right') || null;
-        } else if (distToCorrect > snapRadius) {
-          const otherWrong = slots.find(
-            (s) => s.id !== 'ear_left' && Math.hypot(relX - s.x, relY - s.y) <= s.radius * 1.15
-          );
-          wrongSlotHit = otherWrong || null;
-        }
-      } else if (partId === 'ear_right') {
-        // ========== LEVEL 2: TAI PHẢI ==========
-        // Right ear belongs on the right side of the baby head (x: 85.5, y: 53.5)
-        const isNearTarget = distToCorrect <= snapRadius * 1.35;
-        const isOnRightSide = relX >= 68 && relY >= 32 && relY <= 75;
-
-        if (isNearTarget || isOnRightSide) {
-          isSnapSuccess = true;
-        } else if (relX <= 32 && relY >= 32 && relY <= 75) {
-          // Dropped on opposite ear
-          isSnapSuccess = false;
-          wrongSlotHit = slots.find((s) => s.id === 'ear_left') || null;
-        } else if (distToCorrect > snapRadius) {
-          const otherWrong = slots.find(
-            (s) => s.id !== 'ear_right' && Math.hypot(relX - s.x, relY - s.y) <= s.radius * 1.15
-          );
-          wrongSlotHit = otherWrong || null;
+          if (isExplicitlyOnMouth) {
+            isSnapSuccess = false;
+            wrongSlotHit = slots.find((s) => s.id === 'mouth') || null;
+          } else if (isExplicitlyOnEyes) {
+            isSnapSuccess = false;
+            wrongSlotHit = slots.find((s) => s.id === 'eyes') || null;
+          } else if (isNearSides || isNearCenter || isAcrossHead || distToCorrect <= 36) {
+            isSnapSuccess = true;
+          }
+        } else if (partId === 'eyes') {
+          // Cặp mắt: Nửa trên khuôn mặt
+          const isUpperCenter = relY >= 26 && relY <= 56 && relX >= 25 && relX <= 75;
+          if (isUpperCenter || distToCorrect <= 26) {
+            isSnapSuccess = true;
+          } else if (relY >= 68) {
+            isSnapSuccess = false;
+            wrongSlotHit = slots.find((s) => s.id === 'mouth') || null;
+          }
+        } else if (partId === 'nose') {
+          // Mũi: Vùng trung tâm khuôn mặt (x: 50, y: 58)
+          const isInNoseZone = relX >= 30 && relX <= 70 && relY >= 46 && relY <= 68;
+          if (isInNoseZone || distToCorrect <= 24) {
+            isSnapSuccess = true;
+          } else if (relY <= 38) {
+            wrongSlotHit = slots.find((s) => s.id === 'eyes') || null;
+          } else if (relY >= 72) {
+            wrongSlotHit = slots.find((s) => s.id === 'mouth') || null;
+          }
+        } else if (partId === 'mouth') {
+          // Miệng: Vùng dưới khuôn mặt (x: 50, y: 74)
+          const isInMouthZone = relX >= 28 && relX <= 72 && relY >= 64 && relY <= 88;
+          if (isInMouthZone || distToCorrect <= 24) {
+            isSnapSuccess = true;
+          } else if (relY <= 50) {
+            wrongSlotHit = slots.find((s) => s.id === 'eyes') || null;
+          }
         }
       } else {
-        // ========== ALL OTHER INDIVIDUAL PARTS ==========
-        // (eyes, nose, mouth, eye_left, eye_right)
-        let closestSlot = correctSlot;
-        let minDistance = distToCorrect;
+        // ================= LEVEL 2: MỨC NÂNG CAO (6 BỘ PHẬN) =================
+        // QUY TẮC: Mắt trái, Tai trái nằm bên PHẢI màn hình
+        //          Mắt phải, Tai phải nằm bên TRÁI màn hình
+        if (partId === 'ear_right') {
+          // TAI PHẢI CỦA BÉ: Nằm bên TRÁI màn hình (x: 14.5, y: 53.5)
+          const isOnCorrectSide = relX <= 42 && relY >= 28 && relY <= 78;
+          const isNearTarget = distToCorrect <= 32;
 
-        for (const s of slots) {
-          if (level === 1 && s.id === 'ears') continue;
-
-          const d = Math.hypot(relX - s.x, relY - s.y);
-          if (d < minDistance) {
-            minDistance = d;
-            closestSlot = s;
-          }
-        }
-
-        if (distToCorrect <= snapRadius) {
-          if (closestSlot.id === partId) {
+          if (isOnCorrectSide || isNearTarget) {
             isSnapSuccess = true;
+          } else if (relX >= 58 && relY >= 28 && relY <= 78) {
+            // Thả sang tai đối diện (Tai trái)
+            isSnapSuccess = false;
+            wrongSlotHit = slots.find((s) => s.id === 'ear_left') || null;
           } else {
-            if (distToCorrect <= snapRadius * 0.85) {
-              isSnapSuccess = true;
-            } else {
-              isSnapSuccess = false;
-              wrongSlotHit = closestSlot;
-            }
+            isSnapSuccess = false;
+            const other = slots.find((s) => Math.hypot(relX - s.x, relY - s.y) <= 22);
+            wrongSlotHit = other || null;
           }
-        } else {
-          isSnapSuccess = false;
-          if (closestSlot.id !== partId && minDistance <= closestSlot.radius * 1.25) {
-            wrongSlotHit = closestSlot;
+        } else if (partId === 'ear_left') {
+          // TAI TRÁI CỦA BÉ: Nằm bên PHẢI màn hình (x: 85.5, y: 53.5)
+          const isOnCorrectSide = relX >= 58 && relY >= 28 && relY <= 78;
+          const isNearTarget = distToCorrect <= 32;
+
+          if (isOnCorrectSide || isNearTarget) {
+            isSnapSuccess = true;
+          } else if (relX <= 42 && relY >= 28 && relY <= 78) {
+            // Thả sang tai đối diện (Tai phải)
+            isSnapSuccess = false;
+            wrongSlotHit = slots.find((s) => s.id === 'ear_right') || null;
+          } else {
+            isSnapSuccess = false;
+            const other = slots.find((s) => Math.hypot(relX - s.x, relY - s.y) <= 22);
+            wrongSlotHit = other || null;
+          }
+        } else if (partId === 'eye_right') {
+          // MẮT PHẢI CỦA BÉ: Nằm bên TRÁI màn hình (x: 35.5, y: 43)
+          const isOnCorrectEyeZone = relX <= 50 && relY >= 26 && relY <= 58;
+          const isNearTarget = distToCorrect <= 24;
+
+          if (isOnCorrectEyeZone || isNearTarget) {
+            isSnapSuccess = true;
+          } else if (relX >= 52 && relY >= 26 && relY <= 58) {
+            // Thả sang mắt đối diện (Mắt trái)
+            isSnapSuccess = false;
+            wrongSlotHit = slots.find((s) => s.id === 'eye_left') || null;
+          } else if (relY >= 68) {
+            isSnapSuccess = false;
+            wrongSlotHit = slots.find((s) => s.id === 'mouth') || null;
+          } else {
+            isSnapSuccess = false;
+            const other = slots.find((s) => Math.hypot(relX - s.x, relY - s.y) <= 20);
+            wrongSlotHit = other || null;
+          }
+        } else if (partId === 'eye_left') {
+          // MẮT TRÁI CỦA BÉ: Nằm bên PHẢI màn hình (x: 64.5, y: 43)
+          const isOnCorrectEyeZone = relX >= 50 && relY >= 26 && relY <= 58;
+          const isNearTarget = distToCorrect <= 24;
+
+          if (isOnCorrectEyeZone || isNearTarget) {
+            isSnapSuccess = true;
+          } else if (relX <= 48 && relY >= 26 && relY <= 58) {
+            // Thả sang mắt đối diện (Mắt phải)
+            isSnapSuccess = false;
+            wrongSlotHit = slots.find((s) => s.id === 'eye_right') || null;
+          } else if (relY >= 68) {
+            isSnapSuccess = false;
+            wrongSlotHit = slots.find((s) => s.id === 'mouth') || null;
+          } else {
+            isSnapSuccess = false;
+            const other = slots.find((s) => Math.hypot(relX - s.x, relY - s.y) <= 20);
+            wrongSlotHit = other || null;
+          }
+        } else if (partId === 'nose') {
+          // MŨI: x: 50, y: 58 (tránh lỗi kéo vô báo lỗi bằng cách mở rộng vùng nhận diện)
+          const isInNoseZone = relX >= 32 && relX <= 68 && relY >= 46 && relY <= 68;
+          if (isInNoseZone || distToCorrect <= 24) {
+            isSnapSuccess = true;
+          } else if (relY <= 38) {
+            wrongSlotHit = slots.find((s) => s.id === 'eye_right' || s.id === 'eye_left') || null;
+          } else if (relY >= 72) {
+            wrongSlotHit = slots.find((s) => s.id === 'mouth') || null;
+          }
+        } else if (partId === 'mouth') {
+          // MIỆNG: x: 50, y: 74
+          const isInMouthZone = relX >= 28 && relX <= 72 && relY >= 64 && relY <= 88;
+          if (isInMouthZone || distToCorrect <= 24) {
+            isSnapSuccess = true;
+          } else if (relY <= 50) {
+            wrongSlotHit = slots.find((s) => s.id === 'eye_right' || s.id === 'eye_left') || null;
           }
         }
       }
 
       if (isSnapSuccess) {
         // ========== SUCCESS: CORRECT SNAP! ==========
-        soundEngine.playTick();
+        // 1. Auto-snap into place
+        // 2. Play "Tích!" sound, followed cleanly by the female voice reading the part name
+        // 3. Show green checkmark & star badge
+        // 4. Fix piece permanently to face
+        soundEngine.playPartSuccess(activePartDef.speechKey);
 
         setLockedParts((prev) => ({
           ...prev,
@@ -295,22 +351,19 @@ export const GameBoard: React.FC<GameBoardProps> = ({
 
         // Calculate bounce kickback vector
         let bounceOffsetX = 0;
-        let bounceOffsetY = -30;
+        let bounceOffsetY = -28;
         let bounceRot = -10;
 
         if (wrongSlotHit) {
-          // If dropped right on a wrong slot (e.g. eyes on mouth, nose on eyes):
-          // Bounce away sharply from the center of that wrong slot
           const dx = relX - wrongSlotHit.x;
           const dy = relY - wrongSlotHit.y;
-          bounceOffsetX = dx >= 0 ? 35 : -35;
-          bounceOffsetY = dy >= 0 ? 25 : -35;
-          bounceRot = dx >= 0 ? 15 : -15;
+          bounceOffsetX = dx >= 0 ? 32 : -32;
+          bounceOffsetY = dy >= 0 ? 22 : -30;
+          bounceRot = dx >= 0 ? 14 : -14;
         } else {
-          // Dropped elsewhere or outside
-          bounceOffsetX = (Math.random() - 0.5) * 40;
-          bounceOffsetY = -25;
-          bounceRot = (Math.random() - 0.5) * 20;
+          bounceOffsetX = (Math.random() - 0.5) * 36;
+          bounceOffsetY = -24;
+          bounceRot = (Math.random() - 0.5) * 18;
         }
 
         setBoingState({
@@ -322,13 +375,13 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           rot: bounceRot,
         });
 
-        // After spring bounce (650ms), piece returns safely to its tray dock
+        // After spring bounce (600ms), piece returns safely to its tray dock
         setTimeout(() => {
           setBoingState(null);
-        }, 650);
+        }, 600);
       }
     },
-    [dragState, slots, level]
+    [dragState, slots, level, parts]
   );
 
   // Attach global pointer listeners when dragging
@@ -356,27 +409,15 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       if (dragState.partId === 'ears') {
         if (
           (relY >= 30 && relY <= 72 && relX >= 0 && relX <= 100) ||
-          Math.hypot(relX - 50, relY - 53.5) <= 38 ||
-          Math.hypot(relX - 14.5, relY - 53.5) <= 32 ||
-          Math.hypot(relX - 85.5, relY - 53.5) <= 32
-        ) {
-          nearCorrectSlot = true;
-        }
-      } else if (dragState.partId === 'ear_left') {
-        if (
-          (relX <= 35 && relY >= 30 && relY <= 75) ||
-          Math.hypot(relX - 14.5, relY - 53.5) <= 28
+          Math.hypot(relX - 50, relY - 53.5) <= 38
         ) {
           nearCorrectSlot = true;
         }
       } else if (dragState.partId === 'ear_right') {
-        if (
-          (relX >= 65 && relY >= 30 && relY <= 75) ||
-          Math.hypot(relX - 85.5, relY - 53.5) <= 28
-        ) {
-          nearCorrectSlot = true;
-        }
-      } else if (Math.hypot(relX - correctSlot.x, relY - correctSlot.y) <= correctSlot.radius * 1.4) {
+        if (relX <= 42 && relY >= 30 && relY <= 75) nearCorrectSlot = true;
+      } else if (dragState.partId === 'ear_left') {
+        if (relX >= 58 && relY >= 30 && relY <= 75) nearCorrectSlot = true;
+      } else if (Math.hypot(relX - correctSlot.x, relY - correctSlot.y) <= correctSlot.radius * 1.35) {
         nearCorrectSlot = true;
       }
     }
@@ -390,10 +431,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     <div className="flex flex-col items-center justify-between w-full max-w-4xl mx-auto flex-1 p-2 sm:p-4 select-none">
       {/* Friendly Guide Banner */}
       <div className="w-full flex items-center justify-center mb-2 px-2">
-        <div className="bg-white/90 border-2 border-amber-300 rounded-2xl px-4 py-2 shadow-xs flex items-center gap-2 max-w-md">
+        <div className="bg-white/95 border-2 border-amber-300 rounded-2xl px-4 py-2 shadow-xs flex items-center gap-2 max-w-lg">
           <span className="text-xl">⭐</span>
-          <span className="text-amber-900 font-bold text-sm sm:text-base leading-tight">
-            Bé hãy kéo mắt, mũi, miệng và đôi tai vào khuôn mặt nhé!
+          <span className="text-amber-950 font-bold text-xs sm:text-sm md:text-base leading-tight">
+            {level === 1
+              ? 'Bé hãy kéo cặp mắt, mũi, miệng và cặp tai vào đúng vị trí nhé!'
+              : 'Bé hãy ghép mắt trái, mắt phải, tai trái, tai phải, mũi và miệng nhé!'}
           </span>
         </div>
       </div>
@@ -411,18 +454,16 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             character={character}
             isCompleted={isGameCompleted}
             level={level}
-            hasEyesPlaced={
-              level === 1
-                ? lockedParts.eyes
-                : lockedParts.eye_left && lockedParts.eye_right
-            }
+            hasEyesPlaced={level === 1 ? lockedParts.eyes : undefined}
+            hasEyeLeftPlaced={lockedParts.eye_left}
+            hasEyeRightPlaced={lockedParts.eye_right}
             hasNosePlaced={lockedParts.nose}
             hasMouthPlaced={lockedParts.mouth}
             hasEarLeftPlaced={lockedParts.ears || lockedParts.ear_left}
             hasEarRightPlaced={lockedParts.ears || lockedParts.ear_right}
           />
 
-          {/* Magnetic Attraction Glow Ring (Level 1 assistive visual snap cue) */}
+          {/* Magnetic Attraction Glow Ring */}
           {nearCorrectSlot && activeDraggedDef && (
             <div
               className="absolute pointer-events-none transform -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-yellow-400 bg-yellow-300/30 animate-ping z-10"
@@ -436,8 +477,8 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           )}
 
           {/* FIXED SNAPPED PARTS (Permanently locked into face) */}
-          {/* Left Ear */}
-          {(lockedParts.ears || lockedParts.ear_left) && (
+          {/* Tai phải của bé (Nằm bên trái màn hình x: 14.5%) */}
+          {(lockedParts.ears || lockedParts.ear_right) && (
             <div
               className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none"
               style={{
@@ -447,12 +488,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 height: '26%',
               }}
             >
-              <PartGraphic partId="ear_left" isLocked={true} />
+              <PartGraphic graphicKey="ear_left" isLocked={true} />
             </div>
           )}
 
-          {/* Right Ear */}
-          {(lockedParts.ears || lockedParts.ear_right) && (
+          {/* Tai trái của bé (Nằm bên phải màn hình x: 85.5%) */}
+          {(lockedParts.ears || lockedParts.ear_left) && (
             <div
               className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none"
               style={{
@@ -462,11 +503,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 height: '26%',
               }}
             >
-              <PartGraphic partId="ear_right" isLocked={true} />
+              <PartGraphic graphicKey="ear_right" isLocked={true} />
             </div>
           )}
 
-          {/* Level 1: Pair of Eyes */}
+          {/* Level 1: Cặp Mắt */}
           {level === 1 && lockedParts.eyes && (
             <div
               className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
@@ -477,12 +518,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 height: '25%',
               }}
             >
-              <PartGraphic partId="eyes" isLocked={true} isHappyWin={isGameCompleted} />
+              <PartGraphic graphicKey="eyes_pair" isLocked={true} isHappyWin={isGameCompleted} />
             </div>
           )}
 
-          {/* Level 2: Left Eye */}
-          {level === 2 && lockedParts.eye_left && (
+          {/* Level 2: Mắt phải của bé (Nằm bên trái màn hình x: 35.5%) */}
+          {level === 2 && lockedParts.eye_right && (
             <div
               className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
               style={{
@@ -492,12 +533,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 height: '25%',
               }}
             >
-              <PartGraphic partId="eye_left" isLocked={true} isHappyWin={isGameCompleted} />
+              <PartGraphic graphicKey="eye_left" isLocked={true} isHappyWin={isGameCompleted} />
             </div>
           )}
 
-          {/* Level 2: Right Eye */}
-          {level === 2 && lockedParts.eye_right && (
+          {/* Level 2: Mắt trái của bé (Nằm bên phải màn hình x: 64.5%) */}
+          {level === 2 && lockedParts.eye_left && (
             <div
               className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
               style={{
@@ -507,11 +548,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 height: '25%',
               }}
             >
-              <PartGraphic partId="eye_right" isLocked={true} isHappyWin={isGameCompleted} />
+              <PartGraphic graphicKey="eye_right" isLocked={true} isHappyWin={isGameCompleted} />
             </div>
           )}
 
-          {/* Nose */}
+          {/* Mũi */}
           {lockedParts.nose && (
             <div
               className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
@@ -522,11 +563,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 height: '19%',
               }}
             >
-              <PartGraphic partId="nose" isLocked={true} isHappyWin={isGameCompleted} />
+              <PartGraphic graphicKey="nose" isLocked={true} isHappyWin={isGameCompleted} />
             </div>
           )}
 
-          {/* Mouth */}
+          {/* Miệng */}
           {lockedParts.mouth && (
             <div
               className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none"
@@ -537,7 +578,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 height: '20%',
               }}
             >
-              <PartGraphic partId="mouth" isLocked={true} isHappyWin={isGameCompleted} />
+              <PartGraphic graphicKey="mouth" isLocked={true} isHappyWin={isGameCompleted} />
             </div>
           )}
 
@@ -554,7 +595,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       {/* BOTTOM TOY TRAY (Khay chứa các bộ phận) */}
       <div
         ref={trayRef}
-        className="w-full bg-amber-100/90 border-3 border-amber-300 rounded-3xl p-2 sm:p-3 shadow-lg backdrop-blur-xs flex flex-wrap sm:flex-nowrap items-center justify-center sm:justify-around gap-2 sm:gap-2.5 mt-2"
+        className="w-full bg-amber-100/95 border-3 border-amber-300 rounded-3xl p-2 sm:p-3 shadow-lg backdrop-blur-xs flex flex-wrap sm:flex-nowrap items-center justify-center sm:justify-around gap-2 sm:gap-2.5 mt-2"
       >
         {parts.map((part) => {
           const isLocked = lockedParts[part.id];
@@ -568,7 +609,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 partButtonRefs.current[part.id] = el;
               }}
               onPointerDown={(e) => handlePointerDown(e, part)}
-              className={`relative flex-1 min-w-[75px] max-w-[130px] sm:max-w-[160px] h-20 sm:h-26 rounded-2xl border-3 flex flex-col items-center justify-center p-1 sm:p-2 transition-all duration-200 select-none ${
+              className={`relative flex-1 min-w-[80px] max-w-[130px] sm:max-w-[160px] h-20 sm:h-26 rounded-2xl border-3 flex flex-col items-center justify-center p-1 sm:p-2 transition-all duration-200 select-none ${
                 isLocked
                   ? 'bg-emerald-50 border-emerald-300 opacity-80 cursor-default'
                   : 'bg-white hover:bg-amber-50 active:scale-95 border-amber-400 cursor-grab active:cursor-grabbing shadow-md hover:shadow-lg'
@@ -586,7 +627,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                   </span>
                 </div>
               ) : isDraggingThis || isBoingingThis ? (
-                // Empty indented silhouette waiting for return
+                // Empty silhouette waiting for return
                 <div className="w-full h-full border-2 border-dashed border-amber-300 rounded-xl bg-amber-50/70 flex flex-col items-center justify-center opacity-70">
                   <span className="text-xs font-bold text-amber-700">
                     {part.label}
@@ -596,7 +637,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
                 // Available piece in tray
                 <div className="w-full h-full flex flex-col items-center justify-between">
                   <div className="w-full flex-1 flex items-center justify-center p-1">
-                    <PartGraphic partId={part.id} className="max-h-full max-w-full" />
+                    <PartGraphic graphicKey={part.graphicKey} className="max-h-full max-w-full" />
                   </div>
                   <span className="text-xs sm:text-sm font-extrabold text-amber-900 tracking-wide">
                     {part.label}
@@ -629,7 +670,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
             }px`,
           }}
         >
-          <PartGraphic partId={activeDraggedDef.id} />
+          <PartGraphic graphicKey={activeDraggedDef.graphicKey} />
         </div>
       )}
 
@@ -661,7 +702,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
           }
         >
           <div className="w-full h-full drop-shadow-xl">
-            <PartGraphic partId={activeBoingDef.id} />
+            <PartGraphic graphicKey={activeBoingDef.graphicKey} />
           </div>
         </div>
       )}

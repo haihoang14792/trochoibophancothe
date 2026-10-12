@@ -83,7 +83,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
               : 'text-amber-900 hover:bg-amber-200/60'
           }`}
         >
-          Mức Khó (6 hình)
+          Mức Nâng Cao (6 hình)
         </button>
       </div>
 

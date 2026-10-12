@@ -11,9 +11,11 @@ import {
   LogIn,
   LogOut,
   History,
+  Mic,
 } from 'lucide-react';
 import { CharacterType, GameLevel } from '../types';
 import { useFirebase } from '../context/FirebaseContext';
+import { TeacherAudioManagement } from './TeacherAudioManagement';
 
 export interface TeacherSettingsModalProps {
   isOpen: boolean;
@@ -110,7 +112,7 @@ const FirebaseTeacherSection: React.FC = () => {
                     className="p-1.5 bg-white/80 rounded-lg flex items-center justify-between border border-amber-100"
                   >
                     <span>
-                      {item.character === 'boy' ? '👦' : '👧'} Mức {item.level === 1 ? 'Dễ' : 'Khó'} · {item.durationSeconds}s
+                      {item.character === 'boy' ? '👦' : '👧'} Mức {item.level === 1 ? 'Dễ' : 'Nâng cao'} · {item.durationSeconds}s
                     </span>
                     <span className="text-emerald-700 font-semibold">✓ Đạt</span>
                   </div>
@@ -135,6 +137,8 @@ export const TeacherSettingsModal: React.FC<TeacherSettingsModalProps> = ({
   onToggleSfx,
   onRestart,
 }) => {
+  const [activeTab, setActiveTab] = useState<'settings' | 'audio'>('settings');
+
   if (!isOpen) return null;
 
   const toggleFullscreen = () => {
@@ -146,20 +150,20 @@ export const TeacherSettingsModal: React.FC<TeacherSettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
-      <div className="relative max-w-md w-full bg-white rounded-3xl p-6 shadow-2xl border-4 border-amber-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+      <div className="relative max-w-lg w-full bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border-4 border-amber-300 max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-amber-200">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between pb-3 border-b border-amber-200">
+          <div className="flex items-center gap-2.5">
             <div className="p-2 bg-amber-100 text-amber-900 rounded-xl">
               <Settings className="w-6 h-6 stroke-[2.5]" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-amber-950">
-                Cài Đặt Dành Cho Giáo Viên
+              <h2 className="text-lg sm:text-xl font-black text-amber-950">
+                Bảng Điều Khiển Giáo Viên
               </h2>
               <p className="text-xs text-amber-700 font-semibold">
-                Tùy chỉnh bài dạy và tương tác trên lớp
+                Tùy chỉnh bài học & ghi âm giọng cô giáo
               </p>
             </div>
           </div>
@@ -171,139 +175,171 @@ export const TeacherSettingsModal: React.FC<TeacherSettingsModalProps> = ({
           </button>
         </div>
 
-        {/* Settings Body */}
-        <div className="py-4 space-y-4">
-          {/* 1. Mức độ bài học */}
-          <div>
-            <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider mb-1.5">
-              Mức độ thử thách:
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => onChangeLevel(1)}
-                className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer ${
-                  level === 1
-                    ? 'bg-amber-100 border-amber-500 shadow-sm'
-                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <div className="font-extrabold text-amber-950 text-sm">
-                  Mức Dễ (4 hình)
-                </div>
-                <div className="text-[11px] text-amber-800">
-                  Cặp mắt, mũi, miệng, cặp tai (Cho bé 24-36 tháng)
-                </div>
-              </button>
+        {/* Tab Switcher */}
+        <div className="grid grid-cols-2 gap-2 mt-3 p-1 bg-amber-100/70 rounded-2xl">
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`py-2 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === 'settings'
+                ? 'bg-white text-amber-950 shadow-xs'
+                : 'text-amber-800 hover:text-amber-950'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            <span>Bài Dạy & Lớp Học</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('audio')}
+            className={`py-2 px-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeTab === 'audio'
+                ? 'bg-white text-amber-950 shadow-xs'
+                : 'text-amber-800 hover:text-amber-950'
+            }`}
+          >
+            <Mic className="w-4 h-4 text-rose-500" />
+            <span>Quản Lý Âm Thanh</span>
+          </button>
+        </div>
 
-              <button
-                onClick={() => onChangeLevel(2)}
-                className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer ${
-                  level === 2
-                    ? 'bg-amber-100 border-amber-500 shadow-sm'
-                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <div className="font-extrabold text-amber-950 text-sm">
-                  Mức Khó (6 hình)
+        {/* Modal Scrollable Body */}
+        <div className="flex-1 overflow-y-auto py-3 space-y-4 pr-1">
+          {activeTab === 'settings' ? (
+            <>
+              {/* 1. Mức độ bài học */}
+              <div>
+                <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider mb-1.5">
+                  Mức độ thử thách:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => onChangeLevel(1)}
+                    className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+                      level === 1
+                        ? 'bg-amber-100 border-amber-500 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="font-extrabold text-amber-950 text-sm">
+                      Mức Dễ (4 hình)
+                    </div>
+                    <div className="text-[11px] text-amber-800">
+                      Cặp mắt, mũi, miệng, cặp tai (Cho bé 24-36 tháng)
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => onChangeLevel(2)}
+                    className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+                      level === 2
+                        ? 'bg-amber-100 border-amber-500 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="font-extrabold text-amber-950 text-sm">
+                      Mức Nâng Cao (6 hình)
+                    </div>
+                    <div className="text-[11px] text-amber-800">
+                      Ghép riêng mắt trái/phải, tai trái/phải, mũi, miệng
+                    </div>
+                  </button>
                 </div>
-                <div className="text-[11px] text-amber-800">
-                  Ghép riêng 2 mắt, 2 tai, mũi và miệng
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* 2. Chọn nhân vật */}
-          <div>
-            <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider mb-1.5">
-              Nhân vật:
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => onChangeCharacter('boy')}
-                className={`p-2.5 rounded-2xl border-2 flex items-center justify-center gap-2 font-bold text-sm transition-all cursor-pointer ${
-                  character === 'boy'
-                    ? 'bg-blue-100 border-blue-500 text-blue-900 shadow-sm'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <span className="text-xl">👦</span>
-                <span>Bé Trai</span>
-              </button>
-
-              <button
-                onClick={() => onChangeCharacter('girl')}
-                className={`p-2.5 rounded-2xl border-2 flex items-center justify-center gap-2 font-bold text-sm transition-all cursor-pointer ${
-                  character === 'girl'
-                    ? 'bg-rose-100 border-rose-500 text-rose-900 shadow-sm'
-                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <span className="text-xl">👧</span>
-                <span>Bé Gái</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 3. Hiệu ứng âm thanh */}
-          <div>
-            <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider mb-1.5">
-              Hiệu ứng âm thanh:
-            </label>
-            <div className="flex items-center justify-between p-3 bg-amber-50/70 border border-amber-200 rounded-2xl">
-              <div className="flex items-center gap-2">
-                {isSfxEnabled ? (
-                  <Volume2 className="w-5 h-5 text-emerald-600" />
-                ) : (
-                  <VolumeX className="w-5 h-5 text-slate-400" />
-                )}
-                <span className="text-sm font-bold text-amber-950">
-                  Âm thanh Tích / Boing / Nhạc mừng
-                </span>
               </div>
-              <button
-                onClick={onToggleSfx}
-                className={`px-3 py-1 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                  isSfxEnabled
-                    ? 'bg-emerald-500 text-white shadow-xs'
-                    : 'bg-slate-300 text-slate-700'
-                }`}
-              >
-                {isSfxEnabled ? 'ĐANG BẬT' : 'ĐANG TẮT'}
-              </button>
-            </div>
-          </div>
 
-          {/* 4. Kết nối Firebase & Đồng bộ dữ liệu */}
-          <FirebaseTeacherSection />
+              {/* 2. Chọn nhân vật */}
+              <div>
+                <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider mb-1.5">
+                  Nhân vật bé minh họa:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => onChangeCharacter('boy')}
+                    className={`p-2.5 rounded-2xl border-2 flex items-center justify-center gap-2 font-bold text-sm transition-all cursor-pointer ${
+                      character === 'boy'
+                        ? 'bg-blue-100 border-blue-500 text-blue-900 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="text-xl">👦</span>
+                    <span>Bé Trai</span>
+                  </button>
 
-          {/* 5. Thao tác giảng dạy nhanh */}
-          <div className="pt-2 flex gap-2">
-            <button
-              onClick={toggleFullscreen}
-              className="flex-1 py-3 px-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
-            >
-              <Tv className="w-4 h-4 text-indigo-700" />
-              <span>Toàn Màn Hình Tivi</span>
-            </button>
+                  <button
+                    onClick={() => onChangeCharacter('girl')}
+                    className={`p-2.5 rounded-2xl border-2 flex items-center justify-center gap-2 font-bold text-sm transition-all cursor-pointer ${
+                      character === 'girl'
+                        ? 'bg-rose-100 border-rose-500 text-rose-900 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="text-xl">👧</span>
+                    <span>Bé Gái</span>
+                  </button>
+                </div>
+              </div>
 
-            <button
-              onClick={() => {
-                onRestart();
-                onClose();
-              }}
-              className="flex-1 py-3 px-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all shadow-sm active:scale-95"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span>Chơi Lại Ngay</span>
-            </button>
-          </div>
+              {/* 3. Hiệu ứng âm thanh */}
+              <div>
+                <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider mb-1.5">
+                  Hiệu ứng âm thanh:
+                </label>
+                <div className="flex items-center justify-between p-3 bg-amber-50/70 border border-amber-200 rounded-2xl">
+                  <div className="flex items-center gap-2">
+                    {isSfxEnabled ? (
+                      <Volume2 className="w-5 h-5 text-emerald-600" />
+                    ) : (
+                      <VolumeX className="w-5 h-5 text-slate-400" />
+                    )}
+                    <span className="text-xs sm:text-sm font-bold text-amber-950">
+                      Âm thanh Tích / Boing / Giọng đọc / Nhạc mừng
+                    </span>
+                  </div>
+                  <button
+                    onClick={onToggleSfx}
+                    className={`px-3 py-1 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                      isSfxEnabled
+                        ? 'bg-emerald-500 text-white shadow-xs'
+                        : 'bg-slate-300 text-slate-700'
+                    }`}
+                  >
+                    {isSfxEnabled ? 'ĐANG BẬT' : 'ĐANG TẮT'}
+                  </button>
+                </div>
+              </div>
+
+              {/* 4. Kết nối Firebase & Đồng bộ dữ liệu */}
+              <FirebaseTeacherSection />
+
+              {/* 5. Thao tác giảng dạy nhanh */}
+              <div className="pt-1 flex gap-2">
+                <button
+                  onClick={toggleFullscreen}
+                  className="flex-1 py-2.5 px-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                >
+                  <Tv className="w-4 h-4 text-indigo-700" />
+                  <span>Toàn Màn Hình Tivi</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onRestart();
+                    onClose();
+                  }}
+                  className="flex-1 py-2.5 px-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-sm active:scale-95"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span>Chơi Lại Ngay</span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <TeacherAudioManagement />
+          )}
         </div>
 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="w-full mt-2 py-3 bg-amber-500 hover:bg-amber-600 text-white font-black text-base rounded-2xl shadow-md transition-all active:scale-95 cursor-pointer"
+          className="w-full mt-2 py-3 bg-amber-500 hover:bg-amber-600 text-white font-black text-sm sm:text-base rounded-2xl shadow-md transition-all active:scale-95 cursor-pointer"
         >
           XÁC NHẬN & QUAY LẠI TRÒ CHƠI
         </button>

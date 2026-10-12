@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { PartId } from '../types';
 
 interface PartGraphicProps {
-  partId: PartId;
+  partId?: PartId;
+  graphicKey?: string;
   isLocked?: boolean;
   isHappyWin?: boolean;
   className?: string;
@@ -10,28 +11,36 @@ interface PartGraphicProps {
 
 /**
  * Renders the transparent PNG files generated directly from the user reference.
- * If PNG fails or loading, falls back cleanly to the vector SVG representation.
+ * If PNG fails or is loading, cleanly falls back to vector SVG.
  */
 export const PartGraphic: React.FC<PartGraphicProps> = ({
   partId,
+  graphicKey,
   isLocked = false,
   isHappyWin = false,
   className = '',
 }) => {
   const [useFallback, setUseFallback] = useState(false);
 
-  // Map PartId to corresponding transparent PNG file
-  let pngFileName = `${partId}.png`;
-  if (partId === 'eyes') pngFileName = 'eyes_pair.png';
-  if (partId === 'ears') pngFileName = 'ears_pair.png';
+  // Determine actual image file name
+  let key = graphicKey;
+  if (!key && partId) {
+    if (partId === 'eyes') key = 'eyes_pair';
+    else if (partId === 'ears') key = 'ears_pair';
+    else if (partId === 'eye_left') key = 'eye_right'; // Mắt trái nằm bên phải khuôn mặt
+    else if (partId === 'eye_right') key = 'eye_left'; // Mắt phải nằm bên trái khuôn mặt
+    else if (partId === 'ear_left') key = 'ear_right'; // Tai trái nằm bên phải đầu
+    else if (partId === 'ear_right') key = 'ear_left'; // Tai phải nằm bên trái đầu
+    else key = partId;
+  }
 
-  const pngSrc = `/assets/parts/${pngFileName}`;
+  const pngSrc = `/assets/parts/${key}.png`;
 
   if (!useFallback) {
     return (
       <img
         src={pngSrc}
-        alt={partId}
+        alt={key || partId || 'part'}
         onError={() => setUseFallback(true)}
         className={`w-full h-full object-contain select-none pointer-events-none drop-shadow-sm ${className}`}
         draggable={false}
@@ -40,10 +49,10 @@ export const PartGraphic: React.FC<PartGraphicProps> = ({
   }
 
   // Fallback SVG representation
-  switch (partId) {
-    case 'eyes':
+  switch (key) {
+    case 'eyes_pair':
       return <EyesPairSvg className={className} />;
-    case 'ears':
+    case 'ears_pair':
       return <EarsPairSvg className={className} />;
     case 'eye_left':
       return <SingleEyeSvg side="left" className={className} />;

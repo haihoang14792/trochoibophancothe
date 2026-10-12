@@ -1,6 +1,7 @@
 import React from 'react';
-import { Play } from 'lucide-react';
+import { Play, Volume2 } from 'lucide-react';
 import { CharacterType } from '../types';
+import { soundEngine } from '../utils/audio';
 
 interface StartModalProps {
   isOpen: boolean;
@@ -17,6 +18,11 @@ export const StartModal: React.FC<StartModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  const handlePlayVoiceIntro = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    soundEngine.playIntro();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-amber-950/40 backdrop-blur-xs">
       <div className="relative max-w-lg w-full bg-gradient-to-b from-amber-50 to-orange-50 rounded-3xl p-6 sm:p-8 text-center shadow-2xl border-4 border-amber-300 transform animate-pop-success">
@@ -31,20 +37,30 @@ export const StartModal: React.FC<StartModalProps> = ({
         </h1>
 
         {/* Subtitle / Toddler Invitation */}
-        <div className="bg-amber-200/60 rounded-2xl p-3 sm:p-4 mb-6 border border-amber-300">
-          <p className="text-amber-900 font-extrabold text-lg sm:text-xl">
-            “Các bé ơi! Hãy cùng ghép mắt, mũi, miệng và đôi tai vào khuôn mặt nhé!”
+        <div className="bg-amber-200/60 rounded-2xl p-3 sm:p-4 mb-5 border border-amber-300 relative group">
+          <p className="text-amber-950 font-extrabold text-base sm:text-lg mb-1">
+            “Các bé ơi! Chúng mình cùng ghép khuôn mặt nhé!”
           </p>
+          <button
+            onClick={handlePlayVoiceIntro}
+            className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/80 hover:bg-white text-amber-900 rounded-full text-xs font-bold shadow-xs cursor-pointer transition-all active:scale-95 border border-amber-300"
+          >
+            <Volume2 className="w-3.5 h-3.5 text-amber-600" />
+            <span>Bấm nghe giọng cô</span>
+          </button>
         </div>
 
         {/* Character Pick for the child */}
         <div className="mb-6">
-          <span className="text-sm font-bold text-amber-800 uppercase tracking-wider block mb-2">
+          <span className="text-xs sm:text-sm font-bold text-amber-900 uppercase tracking-wider block mb-2">
             Chọn bạn để cùng chơi:
           </span>
           <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
             <button
-              onClick={() => onSelectCharacter('boy')}
+              onClick={() => {
+                onSelectCharacter('boy');
+                soundEngine.playTouchPop();
+              }}
               className={`p-3 rounded-2xl border-3 flex flex-col items-center gap-1 transition-all cursor-pointer ${
                 character === 'boy'
                   ? 'bg-blue-100 border-blue-500 shadow-md scale-105'
@@ -56,7 +72,10 @@ export const StartModal: React.FC<StartModalProps> = ({
             </button>
 
             <button
-              onClick={() => onSelectCharacter('girl')}
+              onClick={() => {
+                onSelectCharacter('girl');
+                soundEngine.playTouchPop();
+              }}
               className={`p-3 rounded-2xl border-3 flex flex-col items-center gap-1 transition-all cursor-pointer ${
                 character === 'girl'
                   ? 'bg-rose-100 border-rose-500 shadow-md scale-105'
@@ -78,7 +97,7 @@ export const StartModal: React.FC<StartModalProps> = ({
           <span>BẮT ĐẦU CHƠI</span>
         </button>
 
-        <p className="text-amber-700/80 text-xs sm:text-sm mt-4 font-semibold">
+        <p className="text-amber-800/80 text-xs sm:text-sm mt-4 font-semibold">
           Dành cho các bé từ 24 đến 36 tháng tuổi · Dễ chơi & Thú vị
         </p>
       </div>
