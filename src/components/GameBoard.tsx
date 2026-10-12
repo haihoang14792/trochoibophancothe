@@ -117,6 +117,9 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     e.preventDefault();
     e.stopPropagation();
 
+    // Ensure audio context is primed and unlocked on user gesture
+    soundEngine.unlockAudio();
+
     // Bubble pop sound effect on touch
     soundEngine.playTouchPop();
 

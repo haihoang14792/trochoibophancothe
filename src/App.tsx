@@ -29,6 +29,7 @@ export default function App() {
 
   // Start game handler
   const handleStartGame = () => {
+    soundEngine.unlockAudio();
     setIsGameStarted(true);
     setStartTime(Date.now());
     soundEngine.playTouchPop();

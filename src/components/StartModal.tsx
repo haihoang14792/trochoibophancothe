@@ -20,7 +20,13 @@ export const StartModal: React.FC<StartModalProps> = ({
 
   const handlePlayVoiceIntro = (e: React.MouseEvent) => {
     e.stopPropagation();
+    soundEngine.unlockAudio();
     soundEngine.playIntro();
+  };
+
+  const handleStartClick = () => {
+    soundEngine.unlockAudio();
+    onStart();
   };
 
   return (
@@ -90,7 +96,7 @@ export const StartModal: React.FC<StartModalProps> = ({
 
         {/* Big Start Button */}
         <button
-          onClick={onStart}
+          onClick={handleStartClick}
           className="w-full py-4 px-8 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-2xl shadow-xl hover:shadow-2xl transform active:scale-95 transition-all duration-200 flex items-center justify-center gap-3 border-b-4 border-amber-700 cursor-pointer"
         >
           <Play className="w-8 h-8 fill-white" />

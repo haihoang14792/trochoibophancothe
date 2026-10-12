@@ -1,18 +1,25 @@
+import { EMBEDDED_AUDIO_BASE64 } from './audioData';
+
 /**
  * Comprehensive Audio & Voice Engine for "Bé Ghép Khuôn Mặt"
  * 
- * 1. Web Audio API synthesizer for instant sound effects:
- *    - "Tích!" (crystal marimba chime)
- *    - "Boing!" (elastic bouncy spring recoil)
- *    - Victory fanfare celebration melody (2-3 seconds)
- *    - Gentle touch pop
+ * Multi-layer Bulletproof Architecture:
+ * 1. Web Audio API with pre-decoded AudioBuffers from embedded Base64 MP3:
+ *    - Zero network requests (eliminates 404s, CORS, CDN, & Vercel routing issues)
+ *    - Immune to Autoplay timeout restrictions (AudioBufferSourceNode can play anytime once AudioContext is unlocked)
+ *    - Instant 0ms latency for toddlers
  * 
- * 2. Dedicated Vietnamese Voice Queue System:
- *    - Audio files: pre-bundled authentic Vietnamese female voice MP3s in /assets/audio/
- *    - Teacher custom recordings: recorded via microphone or uploaded (MP3/WAV/M4A),
- *      saved persistently in browser IndexedDB.
- *    - Priority: Teacher custom recording -> Bundled Vietnamese MP3 -> Web Speech API fallback
- *    - Audio queue ensures tick chime & voice do NOT collide and sequential drops play in order.
+ * 2. Automatic Audio Unlocker:
+ *    - Listens for first touch/click/key to unlock AudioContext across iOS Safari, Android, and Smart TVs
+ * 
+ * 3. Teacher Custom Recordings:
+ *    - Microphone & MP3/WAV/M4A upload persistently saved in IndexedDB
+ *    - Prioritized over default voice
+ * 
+ * 4. Non-blocking Sequential Audio Queue with Watchdog Timer:
+ *    - Ensures "Tích!" chime and voice never overlap
+ *    - Guarantees sequential playback when pieces are placed rapidly
+ *    - 3.5s watchdog timer prevents queue deadlocks on any browser
  */
 
 export interface AudioItemConfig {
@@ -100,28 +107,93 @@ const DB_NAME = 'BabyFaceAudioDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'teacherRecordings';
 
+// Convert base64 data URI to ArrayBuffer for Web Audio API decoding
+function base64ToArrayBuffer(base64DataUri: string): ArrayBuffer {
+  const base64 = base64DataUri.includes(',') ? base64DataUri.split(',')[1] : base64DataUri;
+  const binaryString = window.atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private isSfxEnabled: boolean = true;
   private customAudioCache: Map<string, string> = new Map(); // key -> objectURL
   private customAudioBlobs: Map<string, Blob> = new Map();
+  private decodedBuffers: Map<string, AudioBuffer> = new Map(); // key -> AudioBuffer
+  private isDecodingAudio: boolean = false;
+  private isUnlocked: boolean = false;
   private isInitialized: boolean = false;
 
   // Queue state for non-overlapping voice playback
   private voiceQueue: Array<{
-    url: string;
+    key: string;
     text: string;
     onEnd?: () => void;
   }> = [];
   private isVoicePlaying: boolean = false;
   private currentAudioElement: HTMLAudioElement | null = null;
+  private currentBufferSource: AudioBufferSourceNode | null = null;
   private changeListeners: Array<() => void> = [];
+  private queueWatchdogTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     if (typeof window !== 'undefined') {
       this.initIndexedDB().catch((err) => {
         console.warn('Failed to initialize Audio IndexedDB:', err);
       });
+      this.setupGlobalUnlockListener();
+    }
+  }
+
+  /**
+   * One-touch global audio unlocker for mobile Safari, Chrome, and Smart TVs
+   */
+  private setupGlobalUnlockListener() {
+    const unlockHandler = () => {
+      this.unlockAudio();
+      window.removeEventListener('pointerdown', unlockHandler);
+      window.removeEventListener('touchstart', unlockHandler);
+      window.removeEventListener('click', unlockHandler);
+      window.removeEventListener('keydown', unlockHandler);
+    };
+
+    window.addEventListener('pointerdown', unlockHandler, { passive: true });
+    window.addEventListener('touchstart', unlockHandler, { passive: true });
+    window.addEventListener('click', unlockHandler, { passive: true });
+    window.addEventListener('keydown', unlockHandler, { passive: true });
+  }
+
+  /**
+   * Explicitly unlock and resume AudioContext
+   */
+  public async unlockAudio(): Promise<void> {
+    if (this.isUnlocked && this.ctx && this.ctx.state === 'running') {
+      return;
+    }
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+      // Play a short silent buffer to unlock iOS AudioContext
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+      this.isUnlocked = true;
+
+      // Start pre-decoding bundled audio in background
+      this.preloadAndDecodeAll();
+    } catch (e) {
+      console.warn('Audio unlock warning:', e);
     }
   }
 
@@ -141,7 +213,11 @@ class SoundEngine {
    */
   private async initIndexedDB(): Promise<void> {
     if (this.isInitialized) return;
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
+      if (typeof indexedDB === 'undefined') {
+        resolve();
+        return;
+      }
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 
       request.onupgradeneeded = (e) => {
@@ -158,7 +234,7 @@ class SoundEngine {
           this.isInitialized = true;
           this.notifyChange();
           resolve();
-        } catch (err) {
+        } catch {
           resolve();
         }
       };
@@ -195,15 +271,15 @@ class SoundEngine {
 
   public async saveTeacherRecording(key: string, blob: Blob): Promise<void> {
     this.customAudioBlobs.set(key, blob);
-    // Revoke previous URL if exists
     if (this.customAudioCache.has(key)) {
       URL.revokeObjectURL(this.customAudioCache.get(key)!);
     }
     const newUrl = URL.createObjectURL(blob);
     this.customAudioCache.set(key, newUrl);
+    // Invalidate cached decoded buffer so new recording is used
+    this.decodedBuffers.delete(key);
     this.notifyChange();
 
-    // Persist to IndexedDB
     try {
       const db = await this.getDB();
       if (db) {
@@ -222,6 +298,7 @@ class SoundEngine {
       this.customAudioCache.delete(key);
     }
     this.customAudioBlobs.delete(key);
+    this.decodedBuffers.delete(key);
     this.notifyChange();
 
     try {
@@ -238,6 +315,10 @@ class SoundEngine {
 
   private getDB(): Promise<IDBDatabase | null> {
     return new Promise((resolve) => {
+      if (typeof indexedDB === 'undefined') {
+        resolve(null);
+        return;
+      }
       const req = indexedDB.open(DB_NAME, DB_VERSION);
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => resolve(null);
@@ -260,6 +341,69 @@ class SoundEngine {
     return this.ctx;
   }
 
+  /**
+   * Pre-decode all embedded audio files into memory AudioBuffers
+   */
+  private async preloadAndDecodeAll(): Promise<void> {
+    if (this.isDecodingAudio) return;
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    this.isDecodingAudio = true;
+
+    for (const [key, b64] of Object.entries(EMBEDDED_AUDIO_BASE64)) {
+      if (!this.decodedBuffers.has(key)) {
+        try {
+          const arrayBuffer = base64ToArrayBuffer(b64);
+          const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+          this.decodedBuffers.set(key, audioBuffer);
+        } catch {
+          // If decoding one fails, continue with others
+        }
+      }
+    }
+    this.isDecodingAudio = false;
+  }
+
+  /**
+   * Decode an individual key on-demand if not already decoded
+   */
+  private async getDecodedBuffer(key: string): Promise<AudioBuffer | null> {
+    if (this.decodedBuffers.has(key)) {
+      return this.decodedBuffers.get(key)!;
+    }
+    const ctx = this.getAudioContext();
+    if (!ctx) return null;
+
+    // Check if teacher custom recording blob exists
+    if (this.customAudioBlobs.has(key)) {
+      try {
+        const blob = this.customAudioBlobs.get(key)!;
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+        this.decodedBuffers.set(key, audioBuffer);
+        return audioBuffer;
+      } catch {
+        // Return null to fallback to HTMLAudioElement
+        return null;
+      }
+    }
+
+    // Default embedded audio
+    const b64 = EMBEDDED_AUDIO_BASE64[key];
+    if (b64) {
+      try {
+        const arrayBuffer = base64ToArrayBuffer(b64);
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+        this.decodedBuffers.set(key, audioBuffer);
+        return audioBuffer;
+      } catch {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
   public setSfxEnabled(enabled: boolean) {
     this.isSfxEnabled = enabled;
     if (!enabled) {
@@ -280,37 +424,41 @@ class SoundEngine {
     const ctx = this.getAudioContext();
     if (!ctx) return;
 
-    const now = ctx.currentTime;
+    try {
+      const now = ctx.currentTime;
 
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(1046.5, now);
-    osc1.frequency.exponentialRampToValueAtTime(1318.5, now + 0.08);
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(1046.5, now);
+      osc1.frequency.exponentialRampToValueAtTime(1318.5, now + 0.08);
 
-    gain1.gain.setValueAtTime(0.001, now);
-    gain1.gain.linearRampToValueAtTime(0.4, now + 0.02);
-    gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+      gain1.gain.setValueAtTime(0.001, now);
+      gain1.gain.linearRampToValueAtTime(0.4, now + 0.02);
+      gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
 
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.35);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.35);
 
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'triangle';
-    osc2.frequency.setValueAtTime(1567.98, now);
-    osc2.frequency.exponentialRampToValueAtTime(2093.0, now + 0.08);
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(1567.98, now);
+      osc2.frequency.exponentialRampToValueAtTime(2093.0, now + 0.08);
 
-    gain2.gain.setValueAtTime(0.001, now);
-    gain2.gain.linearRampToValueAtTime(0.25, now + 0.02);
-    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+      gain2.gain.setValueAtTime(0.001, now);
+      gain2.gain.linearRampToValueAtTime(0.25, now + 0.02);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
 
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(now);
-    osc2.stop(now + 0.28);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now);
+      osc2.stop(now + 0.28);
+    } catch {
+      // AudioContext might be interrupted
+    }
   }
 
   /**
@@ -322,41 +470,45 @@ class SoundEngine {
     const ctx = this.getAudioContext();
     if (!ctx) return;
 
-    const now = ctx.currentTime;
-    const duration = 0.55;
+    try {
+      const now = ctx.currentTime;
+      const duration = 0.55;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(160, now);
-    osc.frequency.exponentialRampToValueAtTime(420, now + 0.12);
-    osc.frequency.linearRampToValueAtTime(320, now + 0.22);
-    osc.frequency.linearRampToValueAtTime(370, now + 0.32);
-    osc.frequency.linearRampToValueAtTime(280, now + 0.44);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.exponentialRampToValueAtTime(420, now + 0.12);
+      osc.frequency.linearRampToValueAtTime(320, now + 0.22);
+      osc.frequency.linearRampToValueAtTime(370, now + 0.32);
+      osc.frequency.linearRampToValueAtTime(280, now + 0.44);
 
-    gain.gain.setValueAtTime(0.01, now);
-    gain.gain.linearRampToValueAtTime(0.35, now + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      gain.gain.setValueAtTime(0.01, now);
+      gain.gain.linearRampToValueAtTime(0.35, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration);
 
-    const subOsc = ctx.createOscillator();
-    const subGain = ctx.createGain();
-    subOsc.type = 'sine';
-    subOsc.frequency.setValueAtTime(220, now);
-    subOsc.frequency.exponentialRampToValueAtTime(110, now + 0.15);
+      const subOsc = ctx.createOscillator();
+      const subGain = ctx.createGain();
+      subOsc.type = 'sine';
+      subOsc.frequency.setValueAtTime(220, now);
+      subOsc.frequency.exponentialRampToValueAtTime(110, now + 0.15);
 
-    subGain.gain.setValueAtTime(0.2, now);
-    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      subGain.gain.setValueAtTime(0.2, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
 
-    subOsc.connect(subGain);
-    subGain.connect(ctx.destination);
-    subOsc.start(now);
-    subOsc.stop(now + 0.2);
+      subOsc.connect(subGain);
+      subGain.connect(ctx.destination);
+      subOsc.start(now);
+      subOsc.stop(now + 0.2);
+    } catch {
+      // AudioContext might be interrupted
+    }
   }
 
   /**
@@ -367,48 +519,52 @@ class SoundEngine {
     const ctx = this.getAudioContext();
     if (!ctx) return;
 
-    const now = ctx.currentTime;
-    const notes = [
-      { freq: 523.25, time: 0.0, dur: 0.22 },
-      { freq: 659.25, time: 0.16, dur: 0.22 },
-      { freq: 783.99, time: 0.32, dur: 0.24 },
-      { freq: 1046.5, time: 0.48, dur: 0.45 },
-      { freq: 880.0, time: 0.8, dur: 0.22 },
-      { freq: 1046.5, time: 0.98, dur: 0.22 },
-      { freq: 1318.51, time: 1.2, dur: 0.8 },
-    ];
+    try {
+      const now = ctx.currentTime;
+      const notes = [
+        { freq: 523.25, time: 0.0, dur: 0.22 },
+        { freq: 659.25, time: 0.16, dur: 0.22 },
+        { freq: 783.99, time: 0.32, dur: 0.24 },
+        { freq: 1046.5, time: 0.48, dur: 0.45 },
+        { freq: 880.0, time: 0.8, dur: 0.22 },
+        { freq: 1046.5, time: 0.98, dur: 0.22 },
+        { freq: 1318.51, time: 1.2, dur: 0.8 },
+      ];
 
-    notes.forEach(({ freq, time, dur }) => {
-      const noteOsc = ctx.createOscillator();
-      const noteGain = ctx.createGain();
+      notes.forEach(({ freq, time, dur }) => {
+        const noteOsc = ctx.createOscillator();
+        const noteGain = ctx.createGain();
 
-      noteOsc.type = 'triangle';
-      noteOsc.frequency.setValueAtTime(freq, now + time);
+        noteOsc.type = 'triangle';
+        noteOsc.frequency.setValueAtTime(freq, now + time);
 
-      noteGain.gain.setValueAtTime(0.001, now + time);
-      noteGain.gain.linearRampToValueAtTime(0.28, now + time + 0.03);
-      noteGain.gain.exponentialRampToValueAtTime(0.0001, now + time + dur);
+        noteGain.gain.setValueAtTime(0.001, now + time);
+        noteGain.gain.linearRampToValueAtTime(0.28, now + time + 0.03);
+        noteGain.gain.exponentialRampToValueAtTime(0.0001, now + time + dur);
 
-      noteOsc.connect(noteGain);
-      noteGain.connect(ctx.destination);
+        noteOsc.connect(noteGain);
+        noteGain.connect(ctx.destination);
 
-      noteOsc.start(now + time);
-      noteOsc.stop(now + time + dur);
+        noteOsc.start(now + time);
+        noteOsc.stop(now + time + dur);
 
-      const shimmerOsc = ctx.createOscillator();
-      const shimmerGain = ctx.createGain();
-      shimmerOsc.type = 'sine';
-      shimmerOsc.frequency.setValueAtTime(freq * 2, now + time);
+        const shimmerOsc = ctx.createOscillator();
+        const shimmerGain = ctx.createGain();
+        shimmerOsc.type = 'sine';
+        shimmerOsc.frequency.setValueAtTime(freq * 2, now + time);
 
-      shimmerGain.gain.setValueAtTime(0.001, now + time);
-      shimmerGain.gain.linearRampToValueAtTime(0.12, now + time + 0.03);
-      shimmerGain.gain.exponentialRampToValueAtTime(0.0001, now + time + dur * 0.7);
+        shimmerGain.gain.setValueAtTime(0.001, now + time);
+        shimmerGain.gain.linearRampToValueAtTime(0.12, now + time + 0.03);
+        shimmerGain.gain.exponentialRampToValueAtTime(0.0001, now + time + dur * 0.7);
 
-      shimmerOsc.connect(shimmerGain);
-      shimmerGain.connect(ctx.destination);
-      shimmerOsc.start(now + time);
-      shimmerOsc.stop(now + time + dur * 0.7);
-    });
+        shimmerOsc.connect(shimmerGain);
+        shimmerGain.connect(ctx.destination);
+        shimmerOsc.start(now + time);
+        shimmerOsc.stop(now + time + dur * 0.7);
+      });
+    } catch {
+      // AudioContext might be interrupted
+    }
   }
 
   /**
@@ -419,29 +575,37 @@ class SoundEngine {
     const ctx = this.getAudioContext();
     if (!ctx) return;
 
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(440, now);
-    osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
 
-    gain.gain.setValueAtTime(0.15, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.08);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } catch {
+      // AudioContext might be interrupted
+    }
   }
 
   /**
-   * Resolve audio URL for a given sound key (prioritizing teacher custom recording)
+   * Resolve best audio source URL for a given sound key
+   * Priority: Custom Teacher Recording -> Embedded Base64 Data URI -> Static File URL
    */
   public getAudioUrlForKey(key: string): { url: string; isCustom: boolean } {
     if (this.customAudioCache.has(key)) {
       return { url: this.customAudioCache.get(key)!, isCustom: true };
+    }
+    if (EMBEDDED_AUDIO_BASE64[key]) {
+      return { url: EMBEDDED_AUDIO_BASE64[key], isCustom: false };
     }
     const config = AUDIO_CONFIGS.find((c) => c.key === key);
     return {
@@ -459,11 +623,10 @@ class SoundEngine {
       return;
     }
 
-    const { url } = this.getAudioUrlForKey(key);
     const config = AUDIO_CONFIGS.find((c) => c.key === key);
     const text = config?.speechText || key;
 
-    this.voiceQueue.push({ url, text, onEnd });
+    this.voiceQueue.push({ key, text, onEnd });
     this.processQueue();
   }
 
@@ -471,21 +634,9 @@ class SoundEngine {
    * Play an isolated audio sample directly (for teacher testing in settings)
    */
   public async playSample(key: string): Promise<void> {
-    const { url } = this.getAudioUrlForKey(key);
-    const config = AUDIO_CONFIGS.find((c) => c.key === key);
-    const text = config?.speechText || key;
-
+    await this.unlockAudio();
     return new Promise((resolve) => {
-      const audio = new Audio(url);
-      audio.volume = 1.0;
-      audio.onended = () => resolve();
-      audio.onerror = () => {
-        // Fallback to Web Speech API
-        this.speakFallback(text).then(resolve);
-      };
-      audio.play().catch(() => {
-        this.speakFallback(text).then(resolve);
-      });
+      this.playVoiceItem(key, () => resolve());
     });
   }
 
@@ -493,6 +644,7 @@ class SoundEngine {
    * Play "Tích!" chime first, followed cleanly by the part's voice after 220ms
    */
   public playPartSuccess(key: string, onEnd?: () => void) {
+    this.unlockAudio();
     this.playTick();
     setTimeout(() => {
       this.queueVoice(key, onEnd);
@@ -503,6 +655,7 @@ class SoundEngine {
    * Play introduction voice when starting game
    */
   public playIntro(onEnd?: () => void) {
+    this.unlockAudio();
     this.queueVoice('intro', onEnd);
   }
 
@@ -510,12 +663,92 @@ class SoundEngine {
    * Play celebration congrats voice when all parts are placed
    */
   public playCongrats(onEnd?: () => void) {
+    this.unlockAudio();
     // Play fanfare first
     this.playVictoryMusic();
     // After fanfare peaks (800ms), play congratulations voice
     setTimeout(() => {
       this.queueVoice('congrats', onEnd);
     }, 800);
+  }
+
+  /**
+   * Plays a specific voice item with multi-tier fallback:
+   * 1. Web Audio Buffer Source (pre-decoded buffer, 0 latency, immune to iOS autoplay)
+   * 2. HTMLAudioElement (with embedded base64 URL or object URL)
+   * 3. Web Speech API (with 2.5s maximum safety timeout)
+   */
+  private async playVoiceItem(key: string, onDone: () => void): Promise<void> {
+    let hasResolved = false;
+    const safeDone = () => {
+      if (hasResolved) return;
+      hasResolved = true;
+      onDone();
+    };
+
+    // Watchdog timer: automatically resolve after 4 seconds to prevent ANY stuck audio
+    const watchdog = setTimeout(() => {
+      safeDone();
+    }, 4000);
+
+    const finish = () => {
+      clearTimeout(watchdog);
+      safeDone();
+    };
+
+    const ctx = this.getAudioContext();
+
+    // Tier 1: Try Web Audio Buffer Source
+    if (ctx && ctx.state === 'running') {
+      try {
+        const buffer = await this.getDecodedBuffer(key);
+        if (buffer) {
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(ctx.destination);
+          this.currentBufferSource = source;
+          source.onended = () => {
+            this.currentBufferSource = null;
+            finish();
+          };
+          source.start(0);
+          return;
+        }
+      } catch {
+        // Fall through to Tier 2
+      }
+    }
+
+    // Tier 2: HTMLAudioElement with Base64 / Blob URL
+    try {
+      const { url } = this.getAudioUrlForKey(key);
+      const audio = new Audio(url);
+      this.currentAudioElement = audio;
+      audio.volume = 1.0;
+
+      audio.onended = () => {
+        this.currentAudioElement = null;
+        finish();
+      };
+
+      audio.onerror = () => {
+        this.currentAudioElement = null;
+        const config = AUDIO_CONFIGS.find((c) => c.key === key);
+        this.speakFallback(config?.speechText || key).then(finish);
+      };
+
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          this.currentAudioElement = null;
+          const config = AUDIO_CONFIGS.find((c) => c.key === key);
+          this.speakFallback(config?.speechText || key).then(finish);
+        });
+      }
+    } catch {
+      const config = AUDIO_CONFIGS.find((c) => c.key === key);
+      this.speakFallback(config?.speechText || key).then(finish);
+    }
   }
 
   private processQueue() {
@@ -526,34 +759,29 @@ class SoundEngine {
     const item = this.voiceQueue.shift()!;
     this.isVoicePlaying = true;
 
+    // Safety watchdog for queue item: guaranteed cleanup within 4.5s
+    if (this.queueWatchdogTimer) {
+      clearTimeout(this.queueWatchdogTimer);
+    }
+
     const handleEnd = () => {
+      if (this.queueWatchdogTimer) {
+        clearTimeout(this.queueWatchdogTimer);
+        this.queueWatchdogTimer = null;
+      }
       this.isVoicePlaying = false;
       this.currentAudioElement = null;
+      this.currentBufferSource = null;
       if (item.onEnd) item.onEnd();
       // Small 100ms breathing room between sequential voices
       setTimeout(() => this.processQueue(), 100);
     };
 
-    try {
-      const audio = new Audio(item.url);
-      this.currentAudioElement = audio;
-      audio.volume = 1.0;
+    this.queueWatchdogTimer = setTimeout(() => {
+      handleEnd();
+    }, 4500);
 
-      audio.onended = () => handleEnd();
-      audio.onerror = () => {
-        // Fallback to browser Web Speech API
-        this.speakFallback(item.text).then(() => handleEnd());
-      };
-
-      const playPromise = audio.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          this.speakFallback(item.text).then(() => handleEnd());
-        });
-      }
-    } catch (e) {
-      this.speakFallback(item.text).then(() => handleEnd());
-    }
+    this.playVoiceItem(item.key, handleEnd);
   }
 
   private speakFallback(text: string): Promise<void> {
@@ -562,15 +790,28 @@ class SoundEngine {
         resolve();
         return;
       }
+
+      // Safety timeout: never let SpeechSynthesis hang the app
+      const timer = setTimeout(() => resolve(), 2200);
+
       try {
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'vi-VN';
         utterance.rate = 0.88; // Gentle nursery speed
         utterance.pitch = 1.05; // Friendly female pitch
-        utterance.onend = () => resolve();
-        utterance.onerror = () => resolve();
+
+        utterance.onend = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+        utterance.onerror = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+
         window.speechSynthesis.speak(utterance);
-      } catch (err) {
+      } catch {
+        clearTimeout(timer);
         resolve();
       }
     });
@@ -578,13 +819,25 @@ class SoundEngine {
 
   public stopAllVoices() {
     this.voiceQueue = [];
+    if (this.queueWatchdogTimer) {
+      clearTimeout(this.queueWatchdogTimer);
+      this.queueWatchdogTimer = null;
+    }
+    if (this.currentBufferSource) {
+      try {
+        this.currentBufferSource.stop();
+      } catch {}
+      this.currentBufferSource = null;
+    }
     if (this.currentAudioElement) {
       this.currentAudioElement.pause();
       this.currentAudioElement = null;
     }
     this.isVoicePlaying = false;
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
     }
   }
 }
