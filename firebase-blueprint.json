@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "GameSession": {
+      "title": "GameSession",
+      "description": "Thống kê lượt chơi và lịch sử ghép khuôn mặt của bé",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Mã phiên chơi"
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID người chơi hoặc giáo viên"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Tên người dùng hoặc giáo viên",
+          "maxLength": 100
+        },
+        "level": {
+          "type": "number",
+          "description": "Mức độ chơi: 1 (Dễ 4 hình) hoặc 2 (Khó 6 hình)"
+        },
+        "character": {
+          "type": "string",
+          "enum": ["boy", "girl"],
+          "description": "Nhân vật bé trai hay bé gái"
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "Thời gian hoàn thành (giây)"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Đã ghép thành công toàn bộ khuôn mặt"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Thời điểm hoàn thành"
+        }
+      },
+      "required": ["id", "userId", "level", "character", "completed"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Thông tin hồ sơ người dùng / giáo viên",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "totalPlays": {
+          "type": "number"
+        },
+        "lastPlayedAt": {
+          "type": "string"
+        }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/sessions/{sessionId}": {
+      "schema": {
+        "$ref": "GameSession"
+      },
+      "description": "Bộ sưu tập các phiên chơi hoàn thành của bé"
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "UserProfile"
+      },
+      "description": "Hồ sơ người chơi"
+    }
+  }
+}

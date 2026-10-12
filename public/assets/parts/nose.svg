@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 170" width="300" height="340" fill="none">
+  <defs>
+    <radialGradient id="noseSkinGrad_f" cx="50%" cy="60%" r="50%">
+      <stop offset="0%" stop-color="#FED7C3" />
+      <stop offset="65%" stop-color="#F7B290" />
+      <stop offset="100%" stop-color="#E08660" />
+    </radialGradient>
+    <linearGradient id="noseBridgeGrad_f" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FED7C3" />
+      <stop offset="100%" stop-color="#F5A884" />
+    </linearGradient>
+  </defs>
+  <path d="M 58 10 L 92 10 L 96 90 L 54 90 Z" fill="url(#noseBridgeGrad_f)" />
+  <path d="M 58 10 C 58 45, 52 75, 45 105" stroke="#4E1F10" stroke-width="3.5" stroke-linecap="round" fill="none" />
+  <path d="M 92 10 C 92 45, 98 75, 105 105" stroke="#4E1F10" stroke-width="3.5" stroke-linecap="round" fill="none" />
+  <path d="M 45 105 C 22 105, 18 140, 45 148 C 58 148, 62 135, 55 115 Z" fill="url(#noseSkinGrad_f)" stroke="#4E1F10" stroke-width="3.5" />
+  <path d="M 105 105 C 128 105, 132 140, 105 148 C 92 148, 88 135, 95 115 Z" fill="url(#noseSkinGrad_f)" stroke="#4E1F10" stroke-width="3.5" />
+  <path d="M 45 105 C 45 80, 105 80, 105 105 C 105 135, 92 152, 75 152 C 58 152, 45 135, 45 105 Z" fill="url(#noseSkinGrad_f)" stroke="#4E1F10" stroke-width="3.5" />
+  <ellipse cx="75" cy="118" rx="10" ry="14" fill="#FFFFFF" opacity="0.65" />
+  <path d="M 46 138 C 50 145, 62 145, 66 138 C 66 134, 52 134, 46 138 Z" fill="#652412" stroke="#4E1F10" stroke-width="2.5" />
+  <path d="M 84 138 C 88 145, 100 145, 104 138 C 104 134, 90 134, 84 138 Z" fill="#652412" stroke="#4E1F10" stroke-width="2.5" />
+  <path d="M 40 142 Q 75 160 110 142" stroke="#4E1F10" stroke-width="3.5" stroke-linecap="round" fill="none" />
+</svg>

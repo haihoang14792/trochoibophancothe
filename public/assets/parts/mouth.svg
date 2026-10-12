@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 140" width="480" height="280" fill="none">
+  <defs>
+    <radialGradient id="lipGrad_f" cx="50%" cy="40%" r="55%">
+      <stop offset="0%" stop-color="#FFA692" />
+      <stop offset="60%" stop-color="#F87960" />
+      <stop offset="100%" stop-color="#DE4F38" />
+    </radialGradient>
+    <linearGradient id="cavityGrad_f" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#6C1420" />
+      <stop offset="100%" stop-color="#450811" />
+    </linearGradient>
+  </defs>
+  <path d="M 22 55 Q 120 40 218 55 Q 215 110 120 110 Q 25 110 22 55 Z" fill="url(#cavityGrad_f)" />
+  <path d="M 55 90 Q 120 70 185 90 Q 170 110 120 110 Q 70 110 55 90 Z" fill="#F47285" />
+  <g id="upper-teeth">
+    <path d="M 38 52 Q 120 42 202 52 Q 195 72 120 74 Q 45 72 38 52 Z" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.5" />
+    <path d="M 68 50 L 67 67" stroke="#D1D5DB" stroke-width="2" stroke-linecap="round" />
+    <path d="M 94 48 L 93 72" stroke="#D1D5DB" stroke-width="2" stroke-linecap="round" />
+    <path d="M 120 47 L 120 74" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round" />
+    <path d="M 146 48 L 147 72" stroke="#D1D5DB" stroke-width="2" stroke-linecap="round" />
+    <path d="M 172 50 L 173 67" stroke="#D1D5DB" stroke-width="2" stroke-linecap="round" />
+  </g>
+  <path d="M 18 55 C 40 38, 70 30, 95 34 C 110 37, 120 45, 120 45 C 120 45, 130 37, 145 34 C 170 30, 200 38, 222 55 C 190 44, 150 48, 120 52 C 90 48, 50 44, 18 55 Z" fill="url(#lipGrad_f)" stroke="#421008" stroke-width="3.5" stroke-linejoin="round" />
+  <path d="M 18 55 C 35 90, 70 128, 120 128 C 170 128, 205 90, 222 55 C 195 95, 160 108, 120 108 C 80 108, 45 95, 18 55 Z" fill="url(#lipGrad_f)" stroke="#421008" stroke-width="3.5" stroke-linejoin="round" />
+  <path d="M 75 114 Q 120 124 165 114" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.85" />
+  <path d="M 14 52 Q 22 56 26 62" stroke="#421008" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 226 52 Q 218 56 214 62" stroke="#421008" stroke-width="3.5" stroke-linecap="round" />
+</svg>

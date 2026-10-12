@@ -1,0 +1,6 @@
+{
+  "name": "Bé Ghép Khuôn Mặt",
+  "description": "Trò chơi giáo dục tương tác kéo thả các bộ phận mắt, mũi, miệng vào khuôn mặt cho trẻ 24-36 tháng tuổi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
