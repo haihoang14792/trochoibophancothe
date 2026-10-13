@@ -124,6 +124,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     soundEngine.playTouchPop();
 
     const targetEl = e.currentTarget;
+    try {
+      targetEl.setPointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
     const rect = targetEl.getBoundingClientRect();
 
     setDragState({
@@ -431,12 +436,12 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   const activeBoingDef = parts.find((p) => p.id === boingState?.partId);
 
   return (
-    <div className="flex flex-col items-center justify-between w-full max-w-4xl mx-auto flex-1 p-2 sm:p-4 select-none">
+    <div className="flex flex-col items-center justify-between w-full max-w-5xl mx-auto h-full flex-1 min-h-0 py-0.5 sm:py-1 px-1 sm:px-3 select-none">
       {/* Friendly Guide Banner */}
-      <div className="w-full flex items-center justify-center mb-2 px-2">
-        <div className="bg-white/95 border-2 border-amber-300 rounded-2xl px-4 py-2 shadow-xs flex items-center gap-2 max-w-lg">
-          <span className="text-xl">⭐</span>
-          <span className="text-amber-950 font-bold text-xs sm:text-sm md:text-base leading-tight">
+      <div className="w-full shrink-0 flex items-center justify-center mb-1 sm:mb-1.5 px-1">
+        <div className="bg-white/95 border-2 border-amber-300 rounded-full px-3 py-1 sm:px-4 sm:py-1.5 shadow-xs flex items-center gap-1.5 sm:gap-2 max-w-lg">
+          <span className="text-base sm:text-lg">⭐</span>
+          <span className="text-amber-950 font-black text-xs sm:text-sm md:text-base leading-tight">
             {level === 1
               ? 'Bé hãy kéo cặp mắt, mũi, miệng và cặp tai vào đúng vị trí nhé!'
               : 'Bé hãy ghép mắt trái, mắt phải, tai trái, tai phải, mũi và miệng nhé!'}
@@ -444,11 +449,11 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         </div>
       </div>
 
-      {/* CENTER: LARGE BABY FACE STAGE */}
-      <div className="relative w-full flex items-center justify-center my-auto py-2">
+      {/* CENTER: BABY FACE STAGE */}
+      <div className="relative w-full flex-1 min-h-0 flex items-center justify-center p-1 sm:p-2 overflow-hidden">
         <div
           ref={faceContainerRef}
-          className={`relative w-72 sm:w-96 md:w-[420px] aspect-[500/520] transition-transform duration-300 ${
+          className={`relative aspect-[500/520] h-full max-h-[44vh] sm:max-h-[48vh] md:max-h-[50vh] max-w-[min(90vw,420px)] w-auto transition-transform duration-300 flex items-center justify-center ${
             isGameCompleted ? 'scale-105' : ''
           }`}
         >
@@ -598,58 +603,66 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       {/* BOTTOM TOY TRAY (Khay chứa các bộ phận) */}
       <div
         ref={trayRef}
-        className="w-full bg-amber-100/95 border-3 border-amber-300 rounded-3xl p-2 sm:p-3 shadow-lg backdrop-blur-xs flex flex-wrap sm:flex-nowrap items-center justify-center sm:justify-around gap-2 sm:gap-2.5 mt-2"
+        className="w-full shrink-0 bg-amber-100/95 border-2 sm:border-3 border-amber-300 rounded-2xl sm:rounded-3xl p-1.5 sm:p-2.5 shadow-lg backdrop-blur-xs z-30 mt-1 sm:mt-1.5"
       >
-        {parts.map((part) => {
-          const isLocked = lockedParts[part.id];
-          const isDraggingThis = dragState?.partId === part.id;
-          const isBoingingThis = boingState?.partId === part.id;
+        <div
+          className={`w-full mx-auto grid gap-1.5 sm:gap-2.5 ${
+            parts.length === 4
+              ? 'grid-cols-4 max-w-xl'
+              : 'grid-cols-6 max-w-4xl'
+          }`}
+        >
+          {parts.map((part) => {
+            const isLocked = lockedParts[part.id];
+            const isDraggingThis = dragState?.partId === part.id;
+            const isBoingingThis = boingState?.partId === part.id;
 
-          return (
-            <div
-              key={part.id}
-              ref={(el) => {
-                partButtonRefs.current[part.id] = el;
-              }}
-              onPointerDown={(e) => handlePointerDown(e, part)}
-              className={`relative flex-1 min-w-[80px] max-w-[130px] sm:max-w-[160px] h-20 sm:h-26 rounded-2xl border-3 flex flex-col items-center justify-center p-1 sm:p-2 transition-all duration-200 select-none ${
-                isLocked
-                  ? 'bg-emerald-50 border-emerald-300 opacity-80 cursor-default'
-                  : 'bg-white hover:bg-amber-50 active:scale-95 border-amber-400 cursor-grab active:cursor-grabbing shadow-md hover:shadow-lg'
-              }`}
-              style={{ touchAction: 'none' }}
-            >
-              {/* Slot Placeholder when dragged or locked */}
-              {isLocked ? (
-                <div className="flex flex-col items-center justify-center text-emerald-600 gap-1">
-                  <div className="bg-emerald-500 text-white rounded-full p-1.5 shadow-sm">
-                    <Check className="w-5 h-5 sm:w-6 sm:h-6 stroke-[3]" />
+            return (
+              <div
+                key={part.id}
+                ref={(el) => {
+                  partButtonRefs.current[part.id] = el;
+                }}
+                onPointerDown={(e) => handlePointerDown(e, part)}
+                className={`relative w-full h-[76px] sm:h-[90px] md:h-[102px] rounded-xl sm:rounded-2xl border-2 sm:border-3 flex flex-col items-center justify-between p-1 sm:p-1.5 transition-all duration-200 select-none ${
+                  isLocked
+                    ? 'bg-emerald-50 border-emerald-300 opacity-80 cursor-default'
+                    : 'bg-white hover:bg-amber-50 active:scale-95 border-amber-400 cursor-grab active:cursor-grabbing shadow-md hover:shadow-lg'
+                }`}
+                style={{ touchAction: 'none' }}
+              >
+                {/* Slot Placeholder when dragged or locked */}
+                {isLocked ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-emerald-600 gap-0.5 sm:gap-1">
+                    <div className="bg-emerald-500 text-white rounded-full p-1 sm:p-1.5 shadow-sm">
+                      <Check className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 stroke-[3]" />
+                    </div>
+                    <span className="text-[10px] sm:text-xs md:text-sm font-bold text-emerald-700 leading-tight text-center">
+                      {part.label} (Đúng!)
+                    </span>
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-emerald-700">
-                    {part.label} (Đúng!)
-                  </span>
-                </div>
-              ) : isDraggingThis || isBoingingThis ? (
-                // Empty silhouette waiting for return
-                <div className="w-full h-full border-2 border-dashed border-amber-300 rounded-xl bg-amber-50/70 flex flex-col items-center justify-center opacity-70">
-                  <span className="text-xs font-bold text-amber-700">
-                    {part.label}
-                  </span>
-                </div>
-              ) : (
-                // Available piece in tray
-                <div className="w-full h-full flex flex-col items-center justify-between">
-                  <div className="w-full flex-1 flex items-center justify-center p-1">
-                    <PartGraphic graphicKey={part.graphicKey} className="max-h-full max-w-full" />
+                ) : isDraggingThis || isBoingingThis ? (
+                  // Empty silhouette waiting for return
+                  <div className="w-full h-full border-2 border-dashed border-amber-300 rounded-lg sm:rounded-xl bg-amber-50/70 flex flex-col items-center justify-center opacity-70 p-0.5">
+                    <span className="text-[10px] sm:text-xs font-bold text-amber-700 text-center leading-tight">
+                      {part.label}
+                    </span>
                   </div>
-                  <span className="text-xs sm:text-sm font-extrabold text-amber-900 tracking-wide">
-                    {part.label}
-                  </span>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                ) : (
+                  // Available piece in tray
+                  <div className="w-full h-full flex flex-col items-center justify-between">
+                    <div className="w-full flex-1 min-h-0 flex items-center justify-center p-0.5 sm:p-1">
+                      <PartGraphic graphicKey={part.graphicKey} className="w-full h-full max-h-full max-w-full object-contain" />
+                    </div>
+                    <span className="text-[10px] sm:text-xs md:text-sm font-black text-amber-950 tracking-tight leading-none text-center truncate max-w-full">
+                      {part.label}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* FLOATING DRAGGED COMPONENT (follows cursor/touch, scaled 1:1 with face) */}

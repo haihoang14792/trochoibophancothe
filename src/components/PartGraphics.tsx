@@ -21,6 +21,7 @@ export const PartGraphic: React.FC<PartGraphicProps> = ({
   className = '',
 }) => {
   const [useFallback, setUseFallback] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Determine actual image file name
   let key = graphicKey;
@@ -36,39 +37,53 @@ export const PartGraphic: React.FC<PartGraphicProps> = ({
 
   const pngSrc = `/assets/parts/${key}.png`;
 
-  if (!useFallback) {
-    return (
+  const renderFallbackSvg = () => {
+    switch (key) {
+      case 'eyes_pair':
+        return <EyesPairSvg className="w-full h-full" />;
+      case 'ears_pair':
+        return <EarsPairSvg className="w-full h-full" />;
+      case 'eye_left':
+        return <SingleEyeSvg side="left" className="w-full h-full" />;
+      case 'eye_right':
+        return <SingleEyeSvg side="right" className="w-full h-full" />;
+      case 'ear_left':
+        return <EarSvg side="left" className="w-full h-full" />;
+      case 'ear_right':
+        return <EarSvg side="right" className="w-full h-full" />;
+      case 'nose':
+        return <NoseSvg className="w-full h-full" />;
+      case 'mouth':
+        return <MouthSvg className="w-full h-full" />;
+      default:
+        return null;
+    }
+  };
+
+  if (useFallback) {
+    return <div className={`w-full h-full flex items-center justify-center ${className}`}>{renderFallbackSvg()}</div>;
+  }
+
+  return (
+    <div className={`relative w-full h-full flex items-center justify-center ${className}`}>
+      {/* Immediate crisp vector render so it NEVER appears empty or blank on tablets or slow networks */}
+      {!isLoaded && (
+        <div className="absolute inset-0 w-full h-full flex items-center justify-center opacity-90 pointer-events-none">
+          {renderFallbackSvg()}
+        </div>
+      )}
       <img
         src={pngSrc}
         alt={key || partId || 'part'}
+        onLoad={() => setIsLoaded(true)}
         onError={() => setUseFallback(true)}
-        className={`w-full h-full object-contain select-none pointer-events-none drop-shadow-sm ${className}`}
+        className={`w-full h-full object-contain select-none pointer-events-none drop-shadow-sm transition-opacity duration-150 ${
+          isLoaded ? 'opacity-100' : 'opacity-0'
+        }`}
         draggable={false}
       />
-    );
-  }
-
-  // Fallback SVG representation
-  switch (key) {
-    case 'eyes_pair':
-      return <EyesPairSvg className={className} />;
-    case 'ears_pair':
-      return <EarsPairSvg className={className} />;
-    case 'eye_left':
-      return <SingleEyeSvg side="left" className={className} />;
-    case 'eye_right':
-      return <SingleEyeSvg side="right" className={className} />;
-    case 'ear_left':
-      return <EarSvg side="left" className={className} />;
-    case 'ear_right':
-      return <EarSvg side="right" className={className} />;
-    case 'nose':
-      return <NoseSvg className={className} />;
-    case 'mouth':
-      return <MouthSvg className={className} />;
-    default:
-      return null;
-  }
+    </div>
+  );
 };
 
 /**

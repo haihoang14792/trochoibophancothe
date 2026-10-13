@@ -30,10 +30,10 @@ export const StartModal: React.FC<StartModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-amber-950/40 backdrop-blur-xs">
-      <div className="relative max-w-lg w-full bg-gradient-to-b from-amber-50 to-orange-50 rounded-3xl p-6 sm:p-8 text-center shadow-2xl border-4 border-amber-300 transform animate-pop-success">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-amber-950/40 backdrop-blur-xs">
+      <div className="relative max-w-lg w-full max-h-[94vh] overflow-y-auto bg-gradient-to-b from-amber-50 to-orange-50 rounded-3xl p-4 sm:p-7 text-center shadow-2xl border-4 border-amber-300 transform animate-pop-success">
         {/* Cute Mascot Badge */}
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-amber-400 text-4xl shadow-md border-4 border-white mb-4 animate-bounce">
+        <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-amber-400 text-3xl sm:text-4xl shadow-md border-4 border-white mb-2 sm:mb-3 animate-bounce">
           👶
         </div>
 

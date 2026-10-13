@@ -88,7 +88,7 @@ export default function App() {
   }, [startTime, level, character, saveGameSession]);
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col justify-between bg-gradient-to-b from-amber-100 via-orange-50 to-amber-200 overflow-hidden font-['Nunito',sans-serif] select-none no-select">
+    <div className="relative h-screen h-[100dvh] max-h-[100dvh] w-full flex flex-col justify-between bg-gradient-to-b from-amber-100 via-orange-50 to-amber-200 overflow-hidden font-['Nunito',sans-serif] select-none no-select">
       {/* Decorative Pastel Background Clouds & Sun */}
       <div className="absolute top-4 left-6 w-16 h-16 sm:w-24 sm:h-24 bg-yellow-300 rounded-full blur-md opacity-40 pointer-events-none" />
       <div className="absolute top-20 right-8 w-24 h-12 bg-white rounded-full blur-sm opacity-60 pointer-events-none" />
@@ -96,13 +96,14 @@ export default function App() {
       <div className="absolute bottom-28 right-16 w-32 h-14 bg-white rounded-full blur-sm opacity-50 pointer-events-none" />
 
       {/* Top Controls Header */}
-      <div className="relative z-10 w-full p-2 sm:p-3">
+      <div className="relative z-20 w-full px-2 sm:px-3 pt-1 sm:pt-2 pb-0 shrink-0">
         <HeaderBar
           character={character}
           onToggleCharacter={() => handleToggleCharacter()}
           level={level}
           onSelectLevel={handleSelectLevel}
           onRestart={handleRestart}
+          onStart={handleStartGame}
           isMuted={!isSfxEnabled}
           onToggleMute={handleToggleSfx}
           onOpenSettings={() => setIsSettingsOpen(true)}
@@ -110,7 +111,7 @@ export default function App() {
       </div>
 
       {/* Main Interactive Game Board */}
-      <main className="relative z-10 flex-1 flex flex-col items-center justify-center w-full px-2">
+      <main className="relative z-10 flex-1 min-h-0 flex flex-col items-center justify-between w-full px-1 sm:px-2 py-0.5 sm:py-1 overflow-hidden">
         <GameBoard
           key={`${character}-${level}-${resetCounter}`}
           character={character}
@@ -122,7 +123,7 @@ export default function App() {
       </main>
 
       {/* Bottom Educational Footnote */}
-      <footer className="relative z-10 py-1.5 px-4 text-center text-amber-800/80 text-xs font-semibold">
+      <footer className="relative z-10 py-1 px-2 text-center text-amber-900/70 text-[10px] sm:text-xs font-semibold shrink-0">
         Bé Ghép Khuôn Mặt · Trò chơi nhận biết mắt, mũi, miệng, tai cho trẻ 24–36 tháng tuổi · TinyLearn
       </footer>
 

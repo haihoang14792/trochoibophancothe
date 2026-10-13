@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Volume2, VolumeX, Maximize2, Minimize2, RotateCcw, Settings } from 'lucide-react';
+import { Volume2, VolumeX, Maximize2, Minimize2, RotateCcw, Settings, Play } from 'lucide-react';
 import { CharacterType, GameLevel } from '../types';
 import { useFirebase } from '../context/FirebaseContext';
 
@@ -9,6 +9,7 @@ interface HeaderBarProps {
   level: GameLevel;
   onSelectLevel: (lvl: GameLevel) => void;
   onRestart: () => void;
+  onStart?: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
   onOpenSettings: () => void;
@@ -20,6 +21,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
   level,
   onSelectLevel,
   onRestart,
+  onStart,
   isMuted,
   onToggleMute,
   onOpenSettings,
@@ -102,10 +104,22 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({
           )}
         </button>
 
+        {/* Start Button */}
+        {onStart && (
+          <button
+            onClick={onStart}
+            className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+            title="Bắt đầu trò chơi & Nghe cô giáo giới thiệu"
+          >
+            <Play className="w-4 h-4 fill-white stroke-[2]" />
+            <span className="hidden sm:inline">Bắt đầu</span>
+          </button>
+        )}
+
         {/* Restart Button */}
         <button
           onClick={onRestart}
-          className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+          className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
           title="Chơi lại từ đầu"
         >
           <RotateCcw className="w-4 h-4 stroke-[2.5]" />
